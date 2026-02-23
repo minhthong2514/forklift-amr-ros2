@@ -12,7 +12,10 @@ ros2 run tf2_ros static_transform_publisher 0.2825 0.0 0.531 0 0 0 base_link las
 
 ros2 launch sllidar_ros2 view_sllidar_c1_launch.py
 
-# Máy Tú
+### Lệnh lưu map
+ros2 run nav2_map_server map_saver_cli -f /media/minhthong/DATA/DO_AN_TOT_NGHIEP/FORKLIFT-AGV/ros2_wp/src/car_assets/maps/<ten_map>
+
+### Máy Tú
 ros2 launch slam_toolbox online_async_launch.py slam_params_file:=/home/tu/carto_ws/src/car_main/config/slam_params.yaml use_sim_time:=false
-# Máy Thông
+### Máy Thông
 ros2 launch slam_toolbox online_async_launch.py slam_params_file:=/media/minhthong/DATA/DO_AN_TOT_NGHIEP/FORKLIFT-AGV/ros/src/car_main/config/slam_params.yaml use_sim_time:=false
