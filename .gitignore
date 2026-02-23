@@ -1,0 +1,16 @@
+# ROS2 build folders
+build/
+install/
+log/
+
+# Micro-ROS generated source folders
+src/ros2/
+src/uros/
+src/eProsima/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
