@@ -19,3 +19,6 @@ ros2 run nav2_map_server map_saver_cli -f /media/minhthong/DATA/DO_AN_TOT_NGHIEP
 ros2 launch slam_toolbox online_async_launch.py slam_params_file:=/home/tu/carto_ws/src/car_main/config/slam_params.yaml use_sim_time:=false
 ### Máy Thông
 ros2 launch slam_toolbox online_async_launch.py slam_params_file:=/media/minhthong/DATA/DO_AN_TOT_NGHIEP/FORKLIFT-AGV/ros/src/car_main/config/slam_params.yaml use_sim_time:=false
+
+### Lệnh lưu view_frames
+ros2 run tf2_tools view_frames

@@ -12,7 +12,7 @@ slam_toolbox:
     # ROS Parameters
     odom_frame: odom
     map_frame: map
-    base_frame: base_link
+    base_frame: base_footprint
     scan_topic: /scan
     use_map_saver: true
     mode: mapping #localization
@@ -32,7 +32,7 @@ slam_toolbox:
     min_laser_range: 0.0 #for rastering images Khoảng cách tối đa tin cậy của cảm biến laser.
     max_laser_range: 12.0 # defaul 20.0 for rastering images Tác động: Nên đặt giá trị này nhỏ hơn một chút so với thông số thực của Lidar để loại bỏ nhiễu ở xa.
     minimum_time_interval: 0.5
-    transform_timeout: 0.2
+    transform_timeout: 1.0
     tf_buffer_duration: 30.0
     stack_size_to_use: 40000000 #// program needs a larger stack size to serialize large maps
     enable_interactive_mode: true
@@ -40,7 +40,7 @@ slam_toolbox:
     # General Parameters
     use_scan_matching: true
     use_scan_barycenter: true
-    minimum_travel_distance: 0.15 #defaul 0.5 (khoảng cách robot đi và cập nhật map ví dụ 0.5 = 0.5m cập nhật map)
+    minimum_travel_distance: 0.1 #defaul 0.5 (khoảng cách robot đi và cập nhật map ví dụ 0.5 = 0.5m cập nhật map)
     minimum_travel_heading: 0.5  
     scan_buffer_size: 10
     scan_buffer_maximum_scan_distance: 10.0
