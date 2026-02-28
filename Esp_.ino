@@ -9,6 +9,13 @@
 #include <geometry_msgs/msg/twist.h>
 #include <std_msgs/msg/int32_multi_array.h>
 
+
+/* ========== CMD_VEL FILTER ========== */
+#define CMD_ALPHA 0.1
+float vx_f = 0.0;
+float vy_f = 0.0;
+float wz_f = 0.0;
+
 /* ========== PIN ========== */
 #define FL_STEP 18
 #define FL_DIR  5
@@ -25,7 +32,9 @@ const float L = 0.40;
 const int STEPS_PER_REV = 800;
 
 /* Deadzone chỉ cho điều khiển */
-#define CMD_VEL_DEADZONE 0.05  
+#define CMD_VEL_DEADZONE 0.01  
+
+unsigned long last_cmd_time = 0; // Biến watchdog
 
 /* ========== STEPPER ========== */
 FastAccelStepperEngine engine;
@@ -56,7 +65,7 @@ void set_mecanum_speed(float vx, float vy, float wz) {
   wz = filter_deadzone(wz);
 
   float w[4];
-  w[0] = (vx - vy - L * wz) / WHEEL_RADIUS; // FL
+  w[0] = (vx - vy - L * wz) / WHEEL_RADIUS; // FL (rad/s)
   w[1] = (vx + vy + L * wz) / WHEEL_RADIUS; // FR
   w[2] = (vx + vy - L * wz) / WHEEL_RADIUS; // RL
   w[3] = (vx - vy + L * wz) / WHEEL_RADIUS; // RR
@@ -66,20 +75,38 @@ void set_mecanum_speed(float vx, float vy, float wz) {
   for (int i = 0; i < 4; i++) {
     float step_hz = (w[i] / (2 * PI)) * STEPS_PER_REV;
 
-    if (fabs(step_hz) < 2.0) {
+    if (fabs(step_hz) < 1.0) { // Ngưỡng dừng cực nhỏ
       motors[i]->stopMove();
+      motors[i]->setSpeedInHz(0); // Ép tần số về 0
     } else {
       motors[i]->setSpeedInHz(fabs(step_hz));
-      (step_hz > 0) ? motors[i]->runForward() : motors[i]->runBackward();
+      if (step_hz > 0) motors[i]->runForward();
+      else motors[i]->runBackward();
     }
   }
 }
 
 /* ========== ROS CALLBACK ========== */
 void cmd_vel_cb(const void *msg) {
-  const geometry_msgs__msg__Twist *tw =
-      (const geometry_msgs__msg__Twist *)msg;
-  set_mecanum_speed(tw->linear.x, tw->linear.y, tw->angular.z);
+  last_cmd_time = millis(); // Cập nhật thời gian nhận lệnh
+  const geometry_msgs__msg__Twist *tw = (const geometry_msgs__msg__Twist *)msg;
+
+  // 1. NẾU NHẬN LỆNH DỪNG TUYỆT ĐỐI
+  if (tw->linear.x == 0 && tw->linear.y == 0 && tw->angular.z == 0) {
+    vx_f = 0.0; vy_f = 0.0; wz_f = 0.0;
+    motor_fl->stopMove();
+    motor_fr->stopMove();
+    motor_rl->stopMove();
+    motor_rr->stopMove();
+    return; 
+  }
+
+  // 2. TĂNG ALPHA ĐỂ PHẢN ỨNG NHANH
+  vx_f += CMD_ALPHA * (tw->linear.x  - vx_f);
+  vy_f += CMD_ALPHA * (tw->linear.y  - vy_f);
+  wz_f += CMD_ALPHA * (tw->angular.z - wz_f);
+
+  set_mecanum_speed(vx_f, vy_f, wz_f);
 }
 
 /* ========== TIMER CALLBACK (50Hz) ========== */
@@ -94,6 +121,7 @@ void publish_steps(rcl_timer_t *, int64_t) {
 
 /* ========== SETUP ========== */
 void setup() {
+  last_cmd_time = millis();
   set_microros_transports();
   Serial.begin(115200);
   delay(2000);
@@ -159,6 +187,13 @@ void setup() {
 
 /* ========== LOOP ========== */
 void loop() {
+  if (millis() - last_cmd_time > 500) {
+    vx_f = 0; vy_f = 0; wz_f = 0;
+    motor_fl->stopMove();
+    motor_fr->stopMove();
+    motor_rl->stopMove();
+    motor_rr->stopMove();
+  }
+
   rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
 }
-
