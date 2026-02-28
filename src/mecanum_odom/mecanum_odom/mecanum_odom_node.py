@@ -12,11 +12,12 @@ class MecanumOdom(Node):
         super().__init__('mecanum_odom')
 
         self.r = 0.05
-        self.L = 0.40
+        self.L = 0.45
         self.steps = 800
 
         self.x = self.y = self.th = 0.0
         self.last_ticks = None
+        
         self.create_subscription(
             Int32MultiArray,
             '/wheel_ticks',
@@ -49,7 +50,6 @@ class MecanumOdom(Node):
         dt = (now - self.last_time).nanoseconds * 1e-9
         self.last_time = now
         
-        # Kiểm tra dt tối thiểu để tránh nhiễu tính toán
         if dt <= 0.001:
             return
 
@@ -57,7 +57,6 @@ class MecanumOdom(Node):
         for i in range(4):
             delta = self.cur_ticks[i] - self.last_ticks[i]
             
-            # BỘ LỌC CHỐNG NHẢY: Ngăn Odom văng khi reset ESP32
             if abs(delta) > 1000:
                 delta = 0
                 
@@ -66,20 +65,17 @@ class MecanumOdom(Node):
 
         dx_b = sum(d) * 0.25
         dy_b = (-d[0] + d[1] + d[2] - d[3]) * 0.25
-        dth  = (-d[0] + d[1] - d[2] + d[3]) / (4 * self.L)
+        dth  = (-d[0] + d[1] - d[2] + d[3]) / (4.0 * self.L)
 
-        # Cập nhật Pose
         self.x += dx_b * math.cos(self.th) - dy_b * math.sin(self.th)
         self.y += dx_b * math.sin(self.th) + dy_b * math.cos(self.th)
-        self.th += dth # Cộng dồn góc trực tiếp giúp mượt hơn
+        self.th += dth 
         self.th = math.atan2(math.sin(self.th), math.cos(self.th))
 
         q = self.to_quat(self.th)
         
-        # Lấy nhãn thời gian đồng bộ mới nhất ngay trước khi gửi
-        now_msg = self.get_clock().now().to_msg()
+        now_msg = now.to_msg()
 
-        # Phát TF: odom -> base_footprint
         t = TransformStamped()
         t.header.stamp = now_msg
         t.header.frame_id = 'odom'
@@ -90,7 +86,6 @@ class MecanumOdom(Node):
         t.transform.rotation = q
         self.tf.sendTransform(t)
 
-        # Phát Odom Topic
         odom = Odometry()
         odom.header.stamp = now_msg
         odom.header.frame_id = 'odom'
@@ -99,21 +94,15 @@ class MecanumOdom(Node):
         odom.pose.pose.position.y = self.y
         odom.pose.pose.orientation = q
         
-        # HIỆP BIẾN (COVARIANCE): Quan trọng để SLAM không làm trôi robot
         odom.pose.covariance = [0.0] * 36
-        odom.pose.covariance[0]  = 0.01 # sai số x
-        odom.pose.covariance[7]  = 0.01 # sai số y
-        odom.pose.covariance[35] = 0.01 # sai số yaw
+        odom.pose.covariance[0]  = 0.01 
+        odom.pose.covariance[7]  = 0.01 
+        odom.pose.covariance[35] = 0.01 
         
         self.odom_pub.publish(odom)
 
     def to_quat(self, yaw):
-        return Quaternion(
-            x=0.0,
-            y=0.0,
-            z=math.sin(yaw/2),
-            w=math.cos(yaw/2)
-        )
+        return Quaternion(x=0.0, y=0.0, z=math.sin(yaw/2), w=math.cos(yaw/2))
 
 def main():
     rclpy.init()
