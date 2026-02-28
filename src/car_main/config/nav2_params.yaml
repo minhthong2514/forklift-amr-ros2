@@ -100,7 +100,7 @@ controller_server:
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
       debug_trajectory_details: True
-      min_vel_x: 0.0
+      min_vel_x: -0.26
       min_vel_y: -0.2
       max_vel_x: 0.26
       max_vel_y: 0.2
@@ -157,7 +157,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.6                                   # Sửa này nữa
+        inflation_radius: 0.65                                   # Sửa này nữa
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -216,7 +216,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.6                             # Đây có khoảng cách an toàn tính từ tâm xe tới vị trí xe nhất (lấy trừ hao thềm khoảng 15-20cm nữa)
+        inflation_radius: 0.65                             # Đây có khoảng cách an toàn tính từ tâm xe tới vị trí xe nhất (lấy trừ hao thềm khoảng 15-20cm nữa)
       always_send_full_costmap: True
 
 map_server:
