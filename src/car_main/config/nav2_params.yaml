@@ -94,7 +94,7 @@ controller_server:
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.25
+      xy_goal_tolerance: 0.05
       yaw_goal_tolerance: 0.15
     # DWB parameters
     FollowPath:
@@ -104,7 +104,7 @@ controller_server:
       min_vel_y: -0.2
       max_vel_x: 0.26
       max_vel_y: 0.2
-      max_vel_theta: 0.3
+      max_vel_theta: 0.2
       min_speed_xy: 0.0
       max_speed_xy: 0.26
       min_speed_theta: 0.0
@@ -124,7 +124,7 @@ controller_server:
       angular_granularity: 0.025
       transform_tolerance: 2.0
       xy_goal_tolerance: 0.05
-      trans_stopped_velocity: 0.15        # Default: 0.25
+      trans_stopped_velocity: 0.05       # Default: 0.25
       short_circuit_trajectory_evaluation: True
       stateful: True
       critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
@@ -135,7 +135,7 @@ controller_server:
       GoalAlign.forward_point_distance: 0.1
       PathDist.scale: 32.0
       GoalDist.scale: 24.0
-      RotateToGoal.scale: 32.0
+      RotateToGoal.scale: 15.0
       RotateToGoal.slowing_factor: 5.0
       RotateToGoal.lookahead_time: -1.0
 
@@ -157,7 +157,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.75                                    # Sửa này nữa
+        inflation_radius: 0.6                                   # Sửa này nữa
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -216,7 +216,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.75                             # Đây có khoảng cách an toàn tính từ tâm xe tới vị trí xe nhất (lấy trừ hao thềm khoảng 15-20cm nữa)
+        inflation_radius: 0.6                             # Đây có khoảng cách an toàn tính từ tâm xe tới vị trí xe nhất (lấy trừ hao thềm khoảng 15-20cm nữa)
       always_send_full_costmap: True
 
 map_server:
