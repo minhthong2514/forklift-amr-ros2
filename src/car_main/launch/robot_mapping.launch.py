@@ -27,11 +27,11 @@ def generate_launch_description():
         parameters=[{'robot_description': robot_description, 'use_sim_time': False}]
     )
 
-    jsp_node = Node(
-        package='joint_state_publisher',
-        executable='joint_state_publisher',
-        parameters=[{'use_sim_time': False}]
-    )
+    # jsp_node = Node(
+    #     package='joint_state_publisher',
+    #     executable='joint_state_publisher',
+    #     parameters=[{'use_sim_time': False}]
+    # )
 
     # --- 3. CÁC NODE CẦN CHẠY ---
     odom_node = Node(
@@ -84,7 +84,7 @@ def generate_launch_description():
         micro_ros_agent,
         odom_node,
         rsp_node,       # Thêm vào
-        jsp_node,       # Thêm vào
+        # jsp_node,       # Thêm vào
         teleop_node,
         lidar_launch,
         slam_launch
