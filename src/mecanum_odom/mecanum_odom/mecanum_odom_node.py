@@ -5,6 +5,7 @@ from std_msgs.msg import Int32MultiArray
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import TransformStamped, Quaternion
 from tf2_ros import TransformBroadcaster
+from sensor_msgs.msg import JointState  ### MỚI THÊM ###
 import math
 
 class MecanumOdom(Node):
@@ -18,6 +19,11 @@ class MecanumOdom(Node):
         self.x = self.y = self.th = 0.0
         self.last_ticks = None
         
+        # ### KHỞI TẠO PUBLISHER CHO JOINT STATES ###
+        self.joint_names = ['front_left_jt', 'front_right_jt', 'back_left_jt', 'back_right_jt']
+        self.wheel_angles = [0.0, 0.0, 0.0, 0.0] 
+        self.joint_pub = self.create_publisher(JointState, '/joint_states', 10)
+
         self.create_subscription(
             Int32MultiArray,
             '/wheel_ticks',
@@ -56,12 +62,24 @@ class MecanumOdom(Node):
         d = []
         for i in range(4):
             delta = self.cur_ticks[i] - self.last_ticks[i]
+
+            # self.get_logger().info(f"Bánh {i}: Ticks mới={self.cur_ticks[i]}, Ticks cũ={self.last_ticks[i]}, Delta={delta}")
             
             if abs(delta) > 1000:
                 delta = 0
                 
+            angle_delta = (delta / self.steps) * 2 * math.pi
+            self.wheel_angles[i] += angle_delta  # Cập nhật góc quay
+
             d.append(delta / self.steps * 2 * math.pi * self.r)
             self.last_ticks[i] = self.cur_ticks[i]
+
+        # ### PUBLISH JOINT STATES ĐỂ BÁNH XE XOAY ###
+        js = JointState()
+        js.header.stamp = now.to_msg()
+        js.name = self.joint_names
+        js.position = self.wheel_angles
+        self.joint_pub.publish(js)
 
         dx_b = sum(d) * 0.25
         dy_b = (-d[0] + d[1] + d[2] - d[3]) * 0.25
