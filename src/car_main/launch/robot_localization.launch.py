@@ -1,28 +1,34 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, Command, PathJoinSubstitution # Added Command & PathJoinSubstitution
 from launch_ros.actions import Node
 from nav2_common.launch import RewrittenYaml
 
 def generate_launch_description():
-    # 1. Khai báo các đường dẫn
+    # --- 1. FILE PATHS (Using PathJoinSubstitution for synchronization) ---
     car_main_dir = get_package_share_directory('car_main')
     car_assets_dir = get_package_share_directory('car_assets')
     lidar_pkg_dir = get_package_share_directory('sllidar_ros2')
+    view_robot_model_dir = get_package_share_directory('view_robot_model')
+
+    # Define the URDF file path identical to your Mapping configuration
+    urdf_file = PathJoinSubstitution([view_robot_model_dir, 'urdf', 'robot_model.urdf']) 
     
     amcl_param_path = os.path.join(car_main_dir, 'config', 'amcl.yaml')
     ekf_param_path = os.path.join(car_main_dir, 'config', 'ekf.yaml')
     default_map_path = os.path.join(car_assets_dir, 'maps', 'home_map.yaml')
 
-    # 2. Khai báo các Argument
+    # --- 2. CONFIGURATION ARGUMENTS ---
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
-    autostart = LaunchConfiguration('autostart', default='true')
     map_file = LaunchConfiguration('map', default=default_map_path)
     
-    # 3. Ghi đè tham số map vào file amcl
+    # Load URDF using the Command tool, matching the Mapping file setup
+    robot_description = Command(['cat ', urdf_file])
+    
+    # Reconfigure AMCL parameters (override map file)
     param_substitutions = {
         'use_sim_time': use_sim_time,
         'yaml_filename': map_file
@@ -34,17 +40,33 @@ def generate_launch_description():
         convert_types=True
     )
 
-    # --- CÁC NODE PHẦN CỨNG ---
-    # Micro-ROS cho Motor
-    micro_ros_agent = Node(
-        package='micro_ros_agent', executable='micro_ros_agent',
-        arguments=['serial', '--dev', '/dev/ttyUSB1', '-b', '115200']
+    # --- 3. ROBOT STATE PUBLISHER (Replaces all static TFs) ---
+    # Publishes the robot's coordinate frames based on the URDF model
+    rsp_node = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'robot_description': robot_description
+        }]
     )
 
-    # Node LiDAR (QUAN TRỌNG: Phải có LiDAR thì AMCL mới định vị được)
+    # --- 4. HARDWARE NODES ---
+    # Bridge for communication with microcontrollers via Serial
+    micro_ros_agent = Node(
+        package='micro_ros_agent', 
+        executable='micro_ros_agent',
+        name='micro_ros_agent',
+        arguments=['serial', '--dev', '/dev/ttyUSB1', '-b', '115200'],
+        output='screen'
+    )
+
+    # Launch the Lidar driver
     lidar_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(lidar_pkg_dir, 'launch', 'view_sllidar_c1_launch.py') 
+            # os.path.join(lidar_pkg_dir, 'launch', 'view_sllidar_c1_launch.py')
+            os.path.join(lidar_pkg_dir, 'launch', 'sllidar_c1_launch.py')       # dont open rviz2
         ),
         launch_arguments={
             'frame_id': 'laser', 
@@ -54,25 +76,17 @@ def generate_launch_description():
         }.items()
     )
 
-    # Node tính toán Odom từ xung
+    # Odometry node for Mecanum wheel calculations
     odom_node = Node(
-        package='mecanum_odom', executable='mecanum_odom_node',
-        parameters=[{'use_sim_time': use_sim_time}]
+        package='mecanum_odom', 
+        executable='mecanum_odom_node',
+        name='mecanum_odom',
+        parameters=[{'use_sim_time': use_sim_time}],
+        output='screen'
     )
 
-    # --- HỆ THỐNG TF TĨNH ---
-    tf_footprint_base = Node(
-        package='tf2_ros', executable='static_transform_publisher',
-        arguments=['0', '0', '0', '0', '0', '0', 'base_footprint', 'base_link']
-    )
-    
-    tf_base_laser = Node(
-        package='tf2_ros', executable='static_transform_publisher',
-        arguments=['0.2825', '0', '0.531', '3.14159', '0', '0', 'base_link', 'laser']
-    )
-
-    # --- ĐỊNH VỊ & LỌC DỮ LIỆU ---
-    # EKF Lọc Odom và phát TF odom -> base_footprint
+    # --- 5. LOCALIZATION & DATA FILTERING ---
+    # Extended Kalman Filter for merging odometry and IMU data
     ekf_localization = Node(
         package="robot_localization", 
         executable="ekf_node",
@@ -80,15 +94,15 @@ def generate_launch_description():
         parameters=[ekf_param_path, {'use_sim_time': use_sim_time}]
     )
 
-    # Map Server cung cấp bản đồ
+    # Map Server: Loads and serves the static map file
     map_server_node = Node(
         package="nav2_map_server", 
         executable="map_server", 
-        name = "map_server",
+        name="map_server",
         parameters=[{'yaml_filename': map_file}, {'use_sim_time': use_sim_time}]
     )
 
-    # AMCL khớp Laser vào bản đồ và phát TF map -> odom
+    # AMCL: Adaptive Monte Carlo Localization for global positioning on a map
     nav2_amcl = Node(
         package="nav2_amcl", 
         executable="amcl",
@@ -96,21 +110,20 @@ def generate_launch_description():
         parameters=[configured_params]
     )
 
-    # Quản lý vòng đời Nav2
+    # Manages the lifecycle states (startup/shutdown) for map_server and amcl
     lifecycle_manager = Node(
         package="nav2_lifecycle_manager",
         executable="lifecycle_manager",
         name="lifecycle_manager_localization",
         parameters=[{"autostart": True}, 
-                    {"node_names": ['map_server', 'amcl']}] # ...phải khớp với tên ở đây
+                    {"node_names": ['map_server', 'amcl']}]
     )
 
     return LaunchDescription([
         micro_ros_agent,
+        rsp_node,           # Robot Model node synchronized with Mapping
         lidar_launch,      
         odom_node,
-        tf_footprint_base,
-        tf_base_laser,
         ekf_localization,
         map_server_node,
         nav2_amcl,

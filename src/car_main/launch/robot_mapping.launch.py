@@ -7,33 +7,38 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Comm
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    # --- 1. ĐỊNH NGHĨA ĐƯỜNG DẪN ---
+    # --- 1. PATH DEFINITIONS ---
+    # Locate the share directories for all required packages
     car_main_dir = get_package_share_directory('car_main')
     lidar_pkg_dir = get_package_share_directory('sllidar_ros2') 
     slam_toolbox_dir = get_package_share_directory('slam_toolbox') 
-    view_robot_model_dir = get_package_share_directory('view_robot_model') # Đường dẫn tới package model
+    view_robot_model_dir = get_package_share_directory('view_robot_model') # Path to the robot model package
     
+    # Define paths for configuration and description files
     slam_config_file = os.path.join(car_main_dir, 'config', 'slam_params.yaml')
-    # Đường dẫn file URDF của bạn
+    # Use PathJoinSubstitution for flexible path management of the URDF file
     urdf_file = PathJoinSubstitution([view_robot_model_dir, 'urdf', 'robot_model.urdf']) 
 
-    # Load URDF vào biến robot_description
+    # Load URDF content into the robot_description parameter using the 'cat' command
     robot_description = Command(['cat ', urdf_file])
 
-    # --- 2. CÁC NODE ROBOT MODEL (Thay thế static TF cũ) ---
+    # --- 2. ROBOT MODEL NODES (Replacing old static TFs) ---
+    # The robot_state_publisher reads URDF and publishes the robot's TF tree
     rsp_node = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         parameters=[{'robot_description': robot_description, 'use_sim_time': False}]
     )
 
+    # Optional: joint_state_publisher can be used to publish non-fixed joint states if needed
     # jsp_node = Node(
     #     package='joint_state_publisher',
     #     executable='joint_state_publisher',
     #     parameters=[{'use_sim_time': False}]
     # )
 
-    # --- 3. CÁC NODE CẦN CHẠY ---
+    # --- 3. OPERATIONAL NODES ---
+    # Node to calculate and publish odometry from wheel encoders
     odom_node = Node(
         package='mecanum_odom',
         executable='mecanum_odom_node', 
@@ -41,6 +46,7 @@ def generate_launch_description():
         output='screen'
     )
 
+    # Teleoperation node launched in a separate terminal for keyboard control
     teleop_node = Node(
         package='car_controller',
         executable='teleop_cmd_vel',
@@ -49,6 +55,7 @@ def generate_launch_description():
         output='screen'
     )
 
+    # Include the Lidar driver launch file with specific hardware configurations
     lidar_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(lidar_pkg_dir, 'launch', 'view_sllidar_c1_launch.py') 
@@ -61,6 +68,7 @@ def generate_launch_description():
         }.items()
     )
 
+    # Include SLAM Toolbox for real-time mapping and localization
     slam_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(slam_toolbox_dir, 'launch', 'online_async_launch.py')
@@ -71,6 +79,7 @@ def generate_launch_description():
         }.items()
     )
 
+    # Micro-ROS Agent to bridge communication between the MCU (ESP32/STM32) and ROS 2
     micro_ros_agent = Node(
         package='micro_ros_agent',
         executable='micro_ros_agent',
@@ -79,12 +88,13 @@ def generate_launch_description():
         output='screen'
     )
     
-    # --- 4. TRẢ VỀ ---
+    # --- 4. RETURN LAUNCH DESCRIPTION ---
+    # Return the list of nodes and launch actions to be executed
     return LaunchDescription([
         micro_ros_agent,
         odom_node,
-        rsp_node,       # Thêm vào
-        # jsp_node,       # Thêm vào
+        rsp_node,       # Added to handle TF transforms from URDF
+        # jsp_node,     # Placeholder for joint states
         teleop_node,
         lidar_launch,
         slam_launch

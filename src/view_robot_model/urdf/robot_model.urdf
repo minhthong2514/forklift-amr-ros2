@@ -1,21 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <robot
-  name="robot_model">
+  name="view_robot_model">
   <link
-    name="base_link">
+    name="base_footprint">
     <inertial>
       <origin
-        xyz="0.0027592048189602 -0.00109323087186158 0.0902566224006059"
+        xyz="-0.0054035733522601 -0.00100542410008342 0.181327616395643"
         rpy="0 0 0" />
       <mass
         value="12.9514400602677" />
       <inertia
         ixx="0.0691413402343924"
-        ixy="2.08800162247807E-06"
+        ixy="2.08800162247779E-06"
         ixz="0.000680135929380171"
         iyy="0.0413290836910292"
-        iyz="-3.43150922819686E-07"
+        iyz="-3.43150922819214E-07"
+        izz="0.074795225666304" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://view_robot_model/meshes/base_footprint.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.2 0.2 0.2 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://view_robot_model/meshes/base_footprint.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.00540357335226025 -0.00100542410008334 0.131327616395643"
+        rpy="0 0 0" />
+      <mass
+        value="12.9514400602677" />
+      <inertia
+        ixx="0.0691413402343925"
+        ixy="2.08800162247781E-06"
+        ixz="0.000680135929380171"
+        iyy="0.0413290836910292"
+        iyz="-3.431509228192E-07"
         izz="0.074795225666304" />
     </inertial>
     <visual>
@@ -42,20 +82,86 @@
       </geometry>
     </collision>
   </link>
+  <joint
+    name="base_link_jt"
+    type="fixed">
+    <origin
+      xyz="0 0 0.05"
+      rpy="0 0 0" />
+    <parent
+      link="base_footprint" />
+    <child
+      link="base_link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="laser">
+    <inertial>
+      <origin
+        xyz="0.000115099330289137 -3.53742893005604E-06 -0.0130182896779998"
+        rpy="0 0 0" />
+      <mass
+        value="0.10046205077288" />
+      <inertia
+        ixx="3.42010786148692E-05"
+        ixy="-2.13205778996814E-10"
+        ixz="9.73147116598499E-09"
+        iyy="3.41937214679317E-05"
+        iyz="-3.62911520302596E-10"
+        izz="4.21147068405958E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://view_robot_model/meshes/laser.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://view_robot_model/meshes/laser.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="laser_jt"
+    type="fixed">
+    <origin
+      xyz="0.282468744738164 -0.00212199129696619 0.529034046554904"
+      rpy="0 0 -3.14159265358979" />
+    <parent
+      link="base_link" />
+    <child
+      link="laser" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
   <link
     name="front_left">
     <inertial>
       <origin
-        xyz="6.59720139967179E-06 -0.00302823831675125 -6.00978662668172E-10"
+        xyz="6.59720139975506E-06 -0.00302823831675114 -6.00978634912597E-10"
         rpy="0 0 0" />
       <mass
         value="0.288217281634097" />
       <inertia
         ixx="8.49296106401694E-05"
-        ixy="1.43015511494287E-08"
-        ixz="-1.13397089900857E-12"
+        ixy="1.4301551149429E-08"
+        ixz="-1.13397089897068E-12"
         iyy="0.000100555669784965"
-        iyz="-7.27735367740481E-13"
+        iyz="-7.27735367324633E-13"
         izz="8.49091110430363E-05" />
     </inertial>
     <visual>
@@ -83,10 +189,10 @@
     </collision>
   </link>
   <joint
-    name="front_left_joint"
+    name="front_left_jt"
     type="continuous">
     <origin
-      xyz="0.21316277817122 0.191500000000001 -0.0415000000000007"
+      xyz="0.204999999999999 0.191587806771779 -0.000429006004963407"
       rpy="0 0 0" />
     <parent
       link="base_link" />
@@ -99,16 +205,16 @@
     name="front_right">
     <inertial>
       <origin
-        xyz="6.59694910581932E-06 -0.00302823952678876 -6.4726107806834E-10"
+        xyz="6.59694910595809E-06 -0.00302823952678877 -6.4726107806834E-10"
         rpy="0 0 0" />
       <mass
         value="0.288217290342464" />
       <inertia
         ixx="8.49296112927797E-05"
-        ixy="1.430094157171E-08"
-        ixz="-1.26114408648308E-12"
+        ixy="1.43009415717096E-08"
+        ixz="-1.26114408670869E-12"
         iyy="0.000100555670474318"
-        iyz="-8.40453520366323E-13"
+        iyz="-8.40453520326836E-13"
         izz="8.49091123769656E-05" />
     </inertial>
     <visual>
@@ -136,10 +242,10 @@
     </collision>
   </link>
   <joint
-    name="front_right_joint"
+    name="front_right_jt"
     type="continuous">
     <origin
-      xyz="0.213162778171221 -0.191499999999999 -0.0415000000000008"
+      xyz="0.205000000000001 -0.191412193228221 -0.000429006004963435"
       rpy="3.14159265358979 0 0" />
     <parent
       link="base_link" />
@@ -152,17 +258,17 @@
     name="back_left">
     <inertial>
       <origin
-        xyz="6.59713988812594E-06 -0.00302823866144808 -6.18176634881173E-10"
+        xyz="6.59713988804267E-06 -0.00302823866144813 -6.1817659324781E-10"
         rpy="0 0 0" />
       <mass
         value="0.288217283906179" />
       <inertia
         ixx="8.4929610920617E-05"
-        ixy="1.4301341564669E-08"
-        ixz="-1.16384805991287E-12"
+        ixy="1.43013415646692E-08"
+        ixz="-1.16384805982167E-12"
         iyy="0.000100555669864889"
-        iyz="-7.48245531343662E-13"
-        izz="8.49091115575327E-05" />
+        iyz="-7.48245531178938E-13"
+        izz="8.49091115575326E-05" />
     </inertial>
     <visual>
       <origin
@@ -189,10 +295,10 @@
     </collision>
   </link>
   <joint
-    name="back_left_joint"
+    name="back_left_jt"
     type="continuous">
     <origin
-      xyz="-0.19683722182878 0.191499999999999 -0.0414999999999993"
+      xyz="-0.205000000000001 0.191587806771777 -0.000429006004961999"
       rpy="0 0 0" />
     <parent
       link="base_link" />
@@ -205,17 +311,17 @@
     name="back_right">
     <inertial>
       <origin
-        xyz="6.59698613908466E-06 -0.00302823948772885 -6.34965358070616E-10"
+        xyz="6.59698613897364E-06 -0.00302823948772886 -6.34965316437253E-10"
         rpy="0 0 0" />
       <mass
         value="0.288217289741628" />
       <inertia
         ixx="8.49296114166343E-05"
-        ixy="1.43009119348593E-08"
-        ixz="-1.20627920212116E-12"
+        ixy="1.4300911934859E-08"
+        ixz="-1.2062792010266E-12"
         iyy="0.00010055567028263"
-        iyz="-8.85793536491525E-13"
-        izz="8.49091124316513E-05" />
+        iyz="-8.8579353652198E-13"
+        izz="8.49091124316512E-05" />
     </inertial>
     <visual>
       <origin
@@ -242,10 +348,10 @@
     </collision>
   </link>
   <joint
-    name="back_right_joint"
+    name="back_right_jt"
     type="continuous">
     <origin
-      xyz="-0.196837221828779 -0.191500000000001 -0.0414999999999993"
+      xyz="-0.204999999999999 -0.191412193228223 -0.000429006004961971"
       rpy="3.14159265358979 0 0" />
     <parent
       link="base_link" />
@@ -253,58 +359,5 @@
       link="back_right" />
     <axis
       xyz="0 -1 0" />
-  </joint>
-  <link
-    name="lidar_link">
-    <inertial>
-      <origin
-        xyz="0.000115099330284807 -3.53742892122977E-06 -0.0130182896779997"
-        rpy="0 0 0" />
-      <mass
-        value="0.10046205077288" />
-      <inertia
-        ixx="3.42010786148693E-05"
-        ixy="-2.13205779021963E-10"
-        ixz="9.73147116591703E-09"
-        iyy="3.41937214679317E-05"
-        iyz="-3.62911520293952E-10"
-        izz="4.21147068405958E-05" />
-    </inertial>
-    <visual>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://view_robot_model/meshes/lidar_link.STL" />
-      </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
-    </visual>
-    <collision>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://view_robot_model/meshes/lidar_link.STL" />
-      </geometry>
-    </collision>
-  </link>
-  <joint
-    name="lidar_link_joint"
-    type="fixed">
-    <origin
-      xyz="0.290631522909385 -0.00220979806874427 0.487963052559866"
-      rpy="0 0 -3.14159265358979" />
-    <parent
-      link="base_link" />
-    <child
-      link="lidar_link" />
-    <axis
-      xyz="0 0 0" />
   </joint>
 </robot>

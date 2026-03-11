@@ -22,3 +22,5 @@ ros2 launch slam_toolbox online_async_launch.py slam_params_file:=/media/minhtho
 
 ### Lệnh lưu view_frames
 ros2 run tf2_tools view_frames
+
+pkill -f ros2
