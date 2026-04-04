@@ -3,7 +3,8 @@ bt_navigator:
     use_sim_time: False
     global_frame: map
     robot_base_frame: base_footprint
-    odom_topic: /odom
+    # odom_topic: /odom
+    odom_topic: /odometry/filtered
     bt_loop_duration: 10
     default_server_timeout: 20
     wait_for_service_timeout: 1000
@@ -138,6 +139,7 @@ controller_server:
       RotateToGoal.scale: 15.0
       RotateToGoal.slowing_factor: 5.0
       RotateToGoal.lookahead_time: -1.0
+      discretize_by_time: True            # BẬT LÊN ĐỂ ROBOT TÍNH TOÁN ĐƯỜNG ĐI THEO THỜI GIAN NGẮN ==> PHÙ HỢP CHO XE CẦN ĐỘ CHÍNH XÁC CAO
 
 local_costmap:
   local_costmap:
@@ -305,12 +307,14 @@ velocity_smoother:
     use_sim_time: False
     smoothing_frequency: 20.0
     scale_velocities: False
-    feedback: "OPEN_LOOP" 
+    # feedback: "OPEN_LOOP" 
+    feedback: "CLOSED_LOOP"
     max_velocity: [0.26, 0.2, 0.4]  # Cho phép y chạy 0.2
     min_velocity: [-0.26, -0.2, -0.4] # Cho phép y chạy -0.2
     max_accel: [1.0, 1.0, 0.5]       # Cho phép gia tốc trục y
     max_decel: [-1.0, -1.0, -0.5]
-    odom_topic: "odom"
+    # odom_topic: "odom"
+    odom_topic: "odometry/filtered"
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]
     velocity_timeout: 1.0

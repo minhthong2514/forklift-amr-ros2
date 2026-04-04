@@ -13,11 +13,12 @@ def generate_launch_description():
     lidar_pkg_dir = get_package_share_directory('sllidar_ros2') 
     slam_toolbox_dir = get_package_share_directory('slam_toolbox') 
     view_robot_model_dir = get_package_share_directory('view_robot_model') # Path to the robot model package
-    
     # Define paths for configuration and description files
     slam_config_file = os.path.join(car_main_dir, 'config', 'slam_params.yaml')
     # Use PathJoinSubstitution for flexible path management of the URDF file
     urdf_file = PathJoinSubstitution([view_robot_model_dir, 'urdf', 'robot_model.urdf']) 
+
+    ekf_config_path = os.path.join(car_main_dir, 'config', 'ekf.yaml')
 
     # Load URDF content into the robot_description parameter using the 'cat' command
     robot_description = Command(['cat ', urdf_file])
@@ -27,7 +28,11 @@ def generate_launch_description():
     rsp_node = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        parameters=[{'robot_description': robot_description, 'use_sim_time': False}]
+        output='screen',
+        parameters=[{
+            'robot_description': robot_description,
+            'use_sim_time': False
+        }]
     )
 
     # Optional: joint_state_publisher can be used to publish non-fixed joint states if needed
@@ -36,6 +41,14 @@ def generate_launch_description():
     #     executable='joint_state_publisher',
     #     parameters=[{'use_sim_time': False}]
     # )
+
+    ekf_filter_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[ekf_config_path, {'use_sim_time': False}]
+    )
 
     # --- 3. OPERATIONAL NODES ---
     # Node to calculate and publish odometry from wheel encoders
@@ -84,7 +97,7 @@ def generate_launch_description():
         package='micro_ros_agent',
         executable='micro_ros_agent',
         name='micro_ros_agent',
-        arguments=['serial', '--dev', '/dev/ttyUSB1', '-b', '115200'],
+        arguments=['serial', '--dev', '/dev/ttyUSB1', '-b', '921600'],
         output='screen'
     )
     
@@ -93,6 +106,7 @@ def generate_launch_description():
     return LaunchDescription([
         micro_ros_agent,
         odom_node,
+        ekf_filter_node,
         rsp_node,       # Added to handle TF transforms from URDF
         # jsp_node,     # Placeholder for joint states
         teleop_node,

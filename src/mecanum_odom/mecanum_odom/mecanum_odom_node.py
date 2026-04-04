@@ -36,7 +36,7 @@ class MecanumOdom(Node):
 
         # Publishers for Odometry and TF Broadcaster
         self.odom_pub = self.create_publisher(Odometry, '/odom', 10)
-        self.tf = TransformBroadcaster(self)
+        # self.tf = TransformBroadcaster(self)
 
         # Timer to run the odometry calculation loop at 50Hz (0.02s)
         self.timer = self.create_timer(0.02, self.update)
@@ -125,7 +125,7 @@ class MecanumOdom(Node):
         t.transform.translation.y = self.y
         t.transform.translation.z = 0.0
         t.transform.rotation = q
-        self.tf.sendTransform(t)
+        # self.tf.sendTransform(t)         # comment thằng này lại
 
         # Create and publish the Odometry message
         odom = Odometry()

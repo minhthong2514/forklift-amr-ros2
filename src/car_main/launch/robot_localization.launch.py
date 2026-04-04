@@ -58,7 +58,7 @@ def generate_launch_description():
         package='micro_ros_agent', 
         executable='micro_ros_agent',
         name='micro_ros_agent',
-        arguments=['serial', '--dev', '/dev/ttyUSB1', '-b', '115200'],
+        arguments=['serial', '--dev', '/dev/ttyUSB1', '-b', '921600'],
         output='screen'
     )
 
@@ -91,6 +91,7 @@ def generate_launch_description():
         package="robot_localization", 
         executable="ekf_node",
         name="ekf_filter_node",
+        output='screen', 
         parameters=[ekf_param_path, {'use_sim_time': use_sim_time}]
     )
 
@@ -99,6 +100,7 @@ def generate_launch_description():
         package="nav2_map_server", 
         executable="map_server", 
         name="map_server",
+        output='screen',
         parameters=[{'yaml_filename': map_file}, {'use_sim_time': use_sim_time}]
     )
 
@@ -107,9 +109,10 @@ def generate_launch_description():
         package="nav2_amcl", 
         executable="amcl",
         name="amcl",
-        parameters=[configured_params]
+        output='screen',
+        parameters=[configured_params],
+        remappings=[('/odom', '/odometry/filtered')] 
     )
-
     # Manages the lifecycle states (startup/shutdown) for map_server and amcl
     lifecycle_manager = Node(
         package="nav2_lifecycle_manager",

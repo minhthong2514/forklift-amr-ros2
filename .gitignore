@@ -7,6 +7,7 @@ log/
 src/ros2/
 src/uros/
 src/eProsima/
+src/view_robot_model/meshes
 
 # Python cache
 __pycache__/
@@ -14,3 +15,4 @@ __pycache__/
 
 # IDE
 .vscode/
+
