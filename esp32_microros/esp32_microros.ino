@@ -44,23 +44,24 @@ void error_loop() {
 
 void cmd_vel_cb(const void *msgin) {
   const geometry_msgs__msg__Twist *tw = (const geometry_msgs__msg__Twist *)msgin;
-  float vx = (fabs(tw->linear.x) < CMD_VEL_DEADZONE) ? 0 : tw->linear.x;
-  float vy = (fabs(tw->linear.y) < CMD_VEL_DEADZONE) ? 0 : tw->linear.y;
-  float wz = (fabs(tw->angular.z) < CMD_VEL_DEADZONE) ? 0 : tw->angular.z;
 
-  if (vx == 0 && vy == 0 && wz == 0) {
+  float target_vx = (fabs(tw->linear.x) < CMD_VEL_DEADZONE) ? 0 : tw->linear.x;
+  float target_vy = (fabs(tw->linear.y) < CMD_VEL_DEADZONE) ? 0 : tw->linear.y;
+  float target_wz = (fabs(tw->angular.z) < CMD_VEL_DEADZONE) ? 0 : tw->angular.z;
+
+  last_cmd_time = millis();
+
+  vx_f += CMD_ALPHA * (target_vx - vx_f);
+  vy_f += CMD_ALPHA * (target_vy - vy_f);
+  wz_f += CMD_ALPHA * (target_wz - wz_f);
+
+  if (target_vx == 0 && target_vy == 0 && target_wz == 0 && fabs(vx_f) < 0.005 && fabs(vy_f) < 0.005 && fabs(wz_f) < 0.005) {
     vx_f = 0;
     vy_f = 0;
     wz_f = 0;
-    stop_all_motors();
+    stop_all_motors();  
   } else {
-    last_cmd_time = millis();
-    // LPF Filter cho mượt mà
-    vx_f += CMD_ALPHA * (vx - vx_f);
-    vy_f += CMD_ALPHA * (vy - vy_f);
-    wz_f += CMD_ALPHA * (wz - wz_f);
     update_manual_odom();
-    // set_mecanum_speed(vx, vy, wz);
     set_mecanum_speed(vx_f, vy_f, wz_f);
   }
 }
@@ -72,8 +73,10 @@ void publish_timer_cb(rcl_timer_t *timer, int64_t last_call_time) {
   update_manual_odom();
 
   static bool toggle_bit = true;
-  struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
+  // struct timespec ts;
+  // clock_gettime(CLOCK_REALTIME, &ts);
+
+  int64_t time_ns = rmw_uros_epoch_nanos();
 
   // 2. Chia nhịp gửi dữ liệu (Interleaving)
   // Việc này giúp Bus I2C không bị ép cùng lúc với tác vụ gửi Serial nặng
@@ -85,8 +88,10 @@ void publish_timer_cb(rcl_timer_t *timer, int64_t last_call_time) {
     // NHỊP B: Đọc và Gửi IMU
     IMURawData raw = readSensor();
     if (!isnan(raw.qw)) {
-      imu_msg.header.stamp.sec = ts.tv_sec;
-      imu_msg.header.stamp.nanosec = ts.tv_nsec;
+      // imu_msg.header.stamp.sec = ts.tv_sec;
+      // imu_msg.header.stamp.nanosec = ts.tv_nsec;
+      imu_msg.header.stamp.sec = (int32_t)(time_ns / 1000000000);
+      imu_msg.header.stamp.nanosec = (uint32_t)(time_ns % 1000000000);
 
       imu_msg.orientation.w = raw.qw;
       imu_msg.orientation.x = raw.qx;
