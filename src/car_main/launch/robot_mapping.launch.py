@@ -15,11 +15,12 @@ def generate_launch_description():
     view_robot_model_dir = get_package_share_directory('view_robot_model') # Path to the robot model package
     # Define paths for configuration and description files
     slam_config_file = os.path.join(car_main_dir, 'config', 'slam_params.yaml')
+    nav2_params_path = os.path.join(car_main_dir, 'config', 'nav2_params.yaml')
+
     # Use PathJoinSubstitution for flexible path management of the URDF file
     urdf_file = PathJoinSubstitution([view_robot_model_dir, 'urdf', 'robot_model.urdf']) 
 
     ekf_config_path = os.path.join(car_main_dir, 'config', 'ekf.yaml')
-
     # Load URDF content into the robot_description parameter using the 'cat' command
     robot_description = Command(['cat ', urdf_file])
 
@@ -101,6 +102,30 @@ def generate_launch_description():
         output='screen'
     )
     
+    velocity_smoother_node = Node(
+    package='nav2_velocity_smoother',
+    executable='velocity_smoother',
+    name='velocity_smoother',
+    output='screen',
+    parameters=[nav2_params_path], # Sử dụng file có gia tốc 0.3 m/s2
+    remappings=[
+        ('input_cmd_vel', '/cmd_vel'),          # Nhận từ file Python của bạn
+        ('output_cmd_vel', '/cmd_vel_smoothed') # Gửi ra ESP32 của bạn
+    ]
+    )
+
+    lifecycle_manager_node = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_mapping',
+        output='screen',
+        parameters=[{
+            'use_sim_time': False,
+            'autostart': True,
+            'node_names': ['velocity_smoother'] # Tên node cần kích hoạt
+        }]
+    )   
+    
     # --- 4. RETURN LAUNCH DESCRIPTION ---
     # Return the list of nodes and launch actions to be executed
     return LaunchDescription([
@@ -111,5 +136,7 @@ def generate_launch_description():
         # jsp_node,     # Placeholder for joint states
         teleop_node,
         lidar_launch,
-        slam_launch
+        slam_launch,
+        velocity_smoother_node,
+        lifecycle_manager_node
     ])

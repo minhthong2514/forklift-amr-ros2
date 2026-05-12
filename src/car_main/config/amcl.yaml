@@ -13,7 +13,7 @@ amcl:
     do_beamskip: false
     global_frame_id: "map"
     lambda_short: 0.1
-    laser_likelihood_max_dist: 2.0
+    laser_likelihood_max_dist: 4.0
     laser_max_range: 100.0
     laser_min_range: -1.0
     laser_model_type: "likelihood_field"
@@ -30,14 +30,14 @@ amcl:
     save_pose_rate: 0.5
     sigma_hit: 0.2
     tf_broadcast: true
-    transform_tolerance: 2.0
-    update_min_a: 0.05
-    update_min_d: 0.05
-    z_hit: 0.5
+    transform_tolerance: 0.5
+    update_min_a: 0.20
+    update_min_d: 0.20
+    z_hit: 0.8
     z_max: 0.05
     z_rand: 0.5
     z_short: 0.05
-    scan_topic: scan
+    scan_topic: "scan"
     set_initial_pose: True
     initial_pose:
       x: 0.0

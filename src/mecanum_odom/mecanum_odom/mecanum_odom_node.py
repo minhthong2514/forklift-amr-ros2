@@ -14,7 +14,7 @@ class MecanumOdom(Node):
 
         # Robot physical parameters: wheel radius (r), track/wheelbase constant (L), and encoder resolution (steps)
         self.r = 0.05
-        self.L = 0.45
+        self.L = 0.3965             # Lx (0.205) + Ly (0.1915)
         self.steps = 800
 
         # Initialize pose variables (x, y, theta)
@@ -35,7 +35,7 @@ class MecanumOdom(Node):
         )
 
         # Publishers for Odometry and TF Broadcaster
-        self.odom_pub = self.create_publisher(Odometry, '/odom', 10)
+        self.odom_pub = self.create_publisher(Odometry, 'mecanum/odom', 10)
         # self.tf = TransformBroadcaster(self)
 
         # Timer to run the odometry calculation loop at 50Hz (0.02s)
@@ -135,12 +135,16 @@ class MecanumOdom(Node):
         odom.pose.pose.position.x = self.x
         odom.pose.pose.position.y = self.y
         odom.pose.pose.orientation = q
+
+        odom.twist.twist.linear.x = dx_b / dt
+        odom.twist.twist.linear.y = dy_b / dt
+        odom.twist.twist.angular.z = dth / dt
         
         # Set pose covariance (simplified values)
         odom.pose.covariance = [0.0] * 36
-        odom.pose.covariance[0]  = 0.01 
-        odom.pose.covariance[7]  = 0.01 
-        odom.pose.covariance[35] = 0.01 
+        odom.pose.covariance[0]  = 0.05 
+        odom.pose.covariance[7]  = 0.05 
+        odom.pose.covariance[35] = 0.05 
         
         self.odom_pub.publish(odom)
 

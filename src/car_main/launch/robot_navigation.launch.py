@@ -31,7 +31,7 @@ def generate_launch_description():
     
     # Remappings: It is NOT recommended to remap /tf if your system follows standard conventions
     # remappings = [] 
-    remappings = [('/odom', '/odometry/filtered')]
+    remappings = [('odom', '/odometry/filtered')]
     
     # 3. PARAMETER OVERRIDES (RewrittenYaml)
     # This allows injecting LaunchConfiguration values directly into the YAML file

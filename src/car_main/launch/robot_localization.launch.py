@@ -19,7 +19,7 @@ def generate_launch_description():
     
     amcl_param_path = os.path.join(car_main_dir, 'config', 'amcl.yaml')
     ekf_param_path = os.path.join(car_main_dir, 'config', 'ekf.yaml')
-    default_map_path = os.path.join(car_assets_dir, 'maps', 'home_map.yaml')
+    default_map_path = os.path.join(car_assets_dir, 'maps', 'home_map2.yaml')
 
     # --- 2. CONFIGURATION ARGUMENTS ---
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
@@ -111,7 +111,7 @@ def generate_launch_description():
         name="amcl",
         output='screen',
         parameters=[configured_params],
-        remappings=[('/odom', '/odometry/filtered')] 
+        remappings=[('odom', '/odometry/filtered')] 
     )
     # Manages the lifecycle states (startup/shutdown) for map_server and amcl
     lifecycle_manager = Node(

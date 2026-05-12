@@ -27,14 +27,8 @@ class TeleopCmdVel(Node):
         self.target_vy = 0.0
         self.target_wz = 0.0
 
-        # Smoothed velocities
-        self.cur_vx = 0.0
-        self.cur_vy = 0.0
-        self.cur_wz = 0.0
-
-        self.speed = 0.3
-        self.turn  = 0.8
-        self.alpha = 0.15
+        self.speed = 0.20
+        self.turn  = 0.20
 
         self.last_key_time = time.time()
         self.running = True
@@ -102,16 +96,10 @@ class TeleopCmdVel(Node):
         if time.time() - self.last_key_time > 0.5:
             self.stop()
 
-        # Smoothing
-        self.cur_vx += self.alpha * (self.target_vx - self.cur_vx)
-        self.cur_vy += self.alpha * (self.target_vy - self.cur_vy)
-        self.cur_wz += self.alpha * (self.target_wz - self.cur_wz)
-
-        # Publish cmd_vel
         msg = Twist()
-        msg.linear.x = self.cur_vx
-        msg.linear.y = self.cur_vy
-        msg.angular.z = self.cur_wz
+        msg.linear.x = self.target_vx
+        msg.linear.y = self.target_vy
+        msg.angular.z = self.target_wz
         self.pub.publish(msg)
 
     def destroy_node(self):
@@ -122,7 +110,6 @@ class TeleopCmdVel(Node):
         self.running = False
         time.sleep(0.1)  # cho thread thoát sạch
         super().destroy_node()
-
 
 def main():
     rclpy.init()
