@@ -66,7 +66,7 @@ def generate_launch_description():
         executable='teleop_cmd_vel',
         name='teleop_keyboard',
         prefix='gnome-terminal --', 
-        output='screen'
+        output='screen',
     )
 
     # Include the Lidar driver launch file with specific hardware configurations
@@ -134,9 +134,9 @@ def generate_launch_description():
         ekf_filter_node,
         rsp_node,       # Added to handle TF transforms from URDF
         # jsp_node,     # Placeholder for joint states
-        teleop_node,
         lidar_launch,
         slam_launch,
         velocity_smoother_node,
-        lifecycle_manager_node
+        lifecycle_manager_node,
+        # teleop_node
     ])
