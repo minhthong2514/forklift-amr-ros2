@@ -13,16 +13,25 @@ def generate_launch_description():
     lidar_pkg_dir = get_package_share_directory('sllidar_ros2') 
     slam_toolbox_dir = get_package_share_directory('slam_toolbox') 
     view_robot_model_dir = get_package_share_directory('view_robot_model') # Path to the robot model package
+    zed_wrapper_dir = get_package_share_directory('zed_wrapper')
+
     # Define paths for configuration and description files
     slam_config_file = os.path.join(car_main_dir, 'config', 'slam_params.yaml')
     nav2_params_path = os.path.join(car_main_dir, 'config', 'nav2_params.yaml')
+    
 
-    # Use PathJoinSubstitution for flexible path management of the URDF file
-    urdf_file = PathJoinSubstitution([view_robot_model_dir, 'urdf', 'robot_model.urdf']) 
+    # Define the URDF file path identical to your Mapping configuration
+    xacro_file_path = PathJoinSubstitution([view_robot_model_dir, 'urdf', 'robot_model.urdf.xacro'])
+    urdf_file = Command(['xacro', ' ', xacro_file_path]) 
 
     ekf_config_path = os.path.join(car_main_dir, 'config', 'ekf.yaml')
     # Load URDF content into the robot_description parameter using the 'cat' command
     robot_description = Command(['cat ', urdf_file])
+
+    rviz_config_file = os.path.join(
+        get_package_share_directory('car_main'), 
+        'rviz', 'default_mapping_rviz.rviz'
+    )
 
     # --- 2. ROBOT MODEL NODES (Replacing old static TFs) ---
     # The robot_state_publisher reads URDF and publishes the robot's TF tree
@@ -31,7 +40,7 @@ def generate_launch_description():
         executable='robot_state_publisher',
         output='screen',
         parameters=[{
-            'robot_description': robot_description,
+            'robot_description': urdf_file,
             'use_sim_time': False
         }]
     )
@@ -72,13 +81,27 @@ def generate_launch_description():
     # Include the Lidar driver launch file with specific hardware configurations
     lidar_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(lidar_pkg_dir, 'launch', 'view_sllidar_c1_launch.py') 
+            os.path.join(lidar_pkg_dir, 'launch', 'sllidar_c1_launch.py') 
         ),
         launch_arguments={
             'frame_id': 'laser', 
             'serial_port': '/dev/ttyUSB0', 
             'inverted': 'false',
             'angle_compensate': 'true'
+        }.items()
+    )
+
+    zed_camera_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(zed_wrapper_dir, 'launch', 'zed_camera.launch.py')
+        ),
+        launch_arguments={
+            'camera_model': 'zed2',
+            'camera_name': 'zed2',  
+            'publish_tf': 'false',
+            'publish_map_tf': 'false',
+            'common_params_path': os.path.join(car_main_dir, 'config', 'common_stereo.yaml'),
+            'config_path': os.path.join(car_main_dir, 'config', 'zed2.yaml')
         }.items()
     )
 
@@ -126,11 +149,21 @@ def generate_launch_description():
         }]
     )   
     
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', rviz_config_file],
+        parameters=[{'use_sim_time': False}],
+        output='screen'
+    )
+
     # --- 4. RETURN LAUNCH DESCRIPTION ---
     # Return the list of nodes and launch actions to be executed
     return LaunchDescription([
         micro_ros_agent,
         odom_node,
+        zed_camera_launch,
         ekf_filter_node,
         rsp_node,       # Added to handle TF transforms from URDF
         # jsp_node,     # Placeholder for joint states
@@ -138,5 +171,6 @@ def generate_launch_description():
         slam_launch,
         velocity_smoother_node,
         lifecycle_manager_node,
+        rviz_node
         # teleop_node
     ])

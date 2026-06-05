@@ -1,22 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<robot
-  name="view_robot_model">
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="view_robot_model">
   <link
     name="base_footprint">
     <inertial>
       <origin
-        xyz="-0.00192512550717041 -0.000689018981572781 0.180449455502325"
+        xyz="0.00303187261098928 -0.000719391201015523 0.187667634358197"
         rpy="0 0 0" />
       <mass
-        value="15.3937526903884" />
+        value="15.671277712907" />
       <inertia
-        ixx="0.0750822670734706"
-        ixy="-1.74008710174754E-05"
-        ixz="0.000685474144944489"
-        iyy="0.0613170241831307"
-        iyz="6.25533060124774E-08"
-        izz="0.0914512222280071" />
+        ixx="0.0760451411288236"
+        ixy="-1.73948899464931E-05"
+        ixz="0.00068385406851277"
+        iyy="0.0619451664986074"
+        iyz="6.54993869714973E-08"
+        izz="0.092002780155816" />
     </inertial>
     <visual>
       <origin
@@ -46,17 +44,17 @@
     name="base_link">
     <inertial>
       <origin
-        xyz="-0.00410075201158157 -0.000757897633767796 0.142190908416036"
+        xyz="-0.001810808494092 -0.000750471521893836 0.145285966609595"
         rpy="0 0 0" />
       <mass
-        value="14.1404214939912" />
+        value="14.265688199312" />
       <inertia
-        ixx="0.0747083475505852"
-        ixy="-1.74006588509029E-05"
-        ixz="0.00068548387624605"
-        iyy="0.0608806077812559"
-        iyz="6.21935967142056E-08"
-        izz="0.0910694710737573" />
+        ixx="0.0752978513818638"
+        ixy="-1.74006589739399E-05"
+        ixz="0.000682665815063808"
+        iyy="0.0614859321362485"
+        iyz="6.21941639867594E-08"
+        izz="0.091247332559988" />
     </inertial>
     <visual>
       <origin
@@ -96,72 +94,19 @@
       xyz="0 0 0" />
   </joint>
   <link
-    name="laser">
-    <inertial>
-      <origin
-        xyz="0.000115099330076085 -3.53742851760819E-06 -0.0130182896779998"
-        rpy="0 0 0" />
-      <mass
-        value="0.10046205077288" />
-      <inertia
-        ixx="3.4201078614869E-05"
-        ixy="-2.1320577894134E-10"
-        ixz="9.73147116599212E-09"
-        iyy="3.41937214679315E-05"
-        iyz="-3.62911520310395E-10"
-        izz="4.21147068405955E-05" />
-    </inertial>
-    <visual>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://view_robot_model/meshes/laser.STL" />
-      </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
-    </visual>
-    <collision>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://view_robot_model/meshes/laser.STL" />
-      </geometry>
-    </collision>
-  </link>
-  <joint
-    name="laser_jt"
-    type="fixed">
-    <origin
-      xyz="0.28225 8.78067717803022E-05 0.529034046554903"
-      rpy="0 0 -3.14159265358979" />
-    <parent
-      link="base_link" />
-    <child
-      link="laser" />
-    <axis
-      xyz="0 0 0" />
-  </joint>
-  <link
     name="front_left">
     <inertial>
       <origin
-        xyz="6.59720139956077E-06 -0.00302823831675181 -6.00978607157021E-10"
+        xyz="6.59720139967179E-06 -0.00302823831675142 -6.00978648790385E-10"
         rpy="0 0 0" />
       <mass
         value="0.288217281634097" />
       <inertia
-        ixx="8.49296106401835E-05"
+        ixx="8.49296106401836E-05"
         ixy="1.43015511484317E-08"
-        ixz="-1.1339718810965E-12"
+        ixz="-1.13397188077224E-12"
         iyy="0.000100555669784985"
-        iyz="-7.27729464552934E-13"
+        iyz="-7.27729464999611E-13"
         izz="8.49091110430561E-05" />
     </inertial>
     <visual>
@@ -205,16 +150,16 @@
     name="front_right">
     <inertial>
       <origin
-        xyz="6.59694910595809E-06 -0.00302823952678875 -6.47261064190552E-10"
+        xyz="6.59694910579156E-06 -0.00302823952678878 -6.47261112762809E-10"
         rpy="0 0 0" />
       <mass
         value="0.288217290342464" />
       <inertia
         ixx="8.49296112927797E-05"
-        ixy="1.43009415717104E-08"
-        ixz="-1.26114408630013E-12"
+        ixy="1.43009415717108E-08"
+        ixz="-1.26114408653836E-12"
         iyy="0.000100555670474318"
-        iyz="-8.40453521264228E-13"
+        iyz="-8.40453520895305E-13"
         izz="8.49091123769656E-05" />
     </inertial>
     <visual>
@@ -258,16 +203,16 @@
     name="back_left">
     <inertial>
       <origin
-        xyz="6.59713988804267E-06 -0.00302823866144852 -6.18176579370022E-10"
+        xyz="6.5971398882092E-06 -0.00302823866144819 -6.18176600186704E-10"
         rpy="0 0 0" />
       <mass
         value="0.288217283906179" />
       <inertia
         ixx="8.4929610920617E-05"
-        ixy="1.43013415646674E-08"
-        ixz="-1.16384806516502E-12"
+        ixy="1.43013415646679E-08"
+        ixz="-1.16384806536354E-12"
         iyy="0.000100555669864889"
-        iyz="-7.48245532259144E-13"
+        iyz="-7.48245532891937E-13"
         izz="8.49091115575326E-05" />
     </inertial>
     <visual>
@@ -311,17 +256,17 @@
     name="back_right">
     <inertial>
       <origin
-        xyz="6.59698613911242E-06 -0.00302823948772889 -6.3496536500951E-10"
+        xyz="6.59698613922344E-06 -0.00302823948772889 -6.34965399703979E-10"
         rpy="0 0 0" />
       <mass
         value="0.288217289741628" />
       <inertia
         ixx="8.49296114166343E-05"
-        ixy="1.43009119348606E-08"
-        ixz="-1.20627920358455E-12"
+        ixy="1.43009119348603E-08"
+        ixz="-1.20627920381698E-12"
         iyy="0.00010055567028263"
-        iyz="-8.8579353528715E-13"
-        izz="8.49091124316513E-05" />
+        iyz="-8.85793535356633E-13"
+        izz="8.49091124316512E-05" />
     </inertial>
     <visual>
       <origin
@@ -364,16 +309,16 @@
     name="imu_link">
     <inertial>
       <origin
-        xyz="0.000845680649576901 0.00075545964761381 -0.00185425295461589"
+        xyz="0.000845680649576898 0.000755459647613782 -0.00185425295461578"
         rpy="0 0 0" />
       <mass
         value="0.000674678214489439" />
       <inertia
         ixx="2.17569992333801E-08"
-        ixy="-2.12091450133379E-12"
-        ixz="-1.04699023147566E-13"
-        iyy="1.84912152717305E-08"
-        iyz="3.88608827335339E-13"
+        ixy="-2.12091450133399E-12"
+        ixz="-1.04699023147567E-13"
+        iyy="1.84912152717304E-08"
+        iyz="3.88608827335338E-13"
         izz="3.99591926332298E-08" />
     </inertial>
     <visual>
@@ -412,5 +357,123 @@
       link="imu_link" />
     <axis
       xyz="0 0 0" />
+  </joint>
+  <link
+    name="laser">
+    <inertial>
+      <origin
+        xyz="0.000115099330074697 -3.53742851050276E-06 -0.013018289677998"
+        rpy="0 0 0" />
+      <mass
+        value="0.10046205077288" />
+      <inertia
+        ixx="3.42010786148692E-05"
+        ixy="-2.13205778955333E-10"
+        ixz="9.73147116589742E-09"
+        iyy="3.41937214679317E-05"
+        iyz="-3.62911520309036E-10"
+        izz="4.21147068405958E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://view_robot_model/meshes/laser.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://view_robot_model/meshes/laser.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="laser_jt"
+    type="fixed">
+    <origin
+      xyz="0.282249999999999 8.78067717890729E-05 0.534034046554903"
+      rpy="0 0 -3.14159265358979" />
+    <parent
+      link="base_link" />
+    <child
+      link="laser" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="zed2">
+    <inertial>
+      <origin
+        xyz="0.00123592571626313 -0.00445421152338907 -0.000367570735085532"
+        rpy="0 0 0" />
+      <mass
+        value="0.152258317197808" />
+      <inertia
+        ixx="0.000372381871693472"
+        ixy="1.58824301550385E-09"
+        ixz="-3.68658632371617E-07"
+        iyy="2.281796048433E-05"
+        iyz="6.47520014252541E-09"
+        izz="0.000374684793958985" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://view_robot_model/meshes/zed2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.627450980392157 0.627450980392157 0.627450980392157 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://view_robot_model/meshes/zed2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="zed2_jt"
+    type="fixed">
+    <origin
+      xyz="0.295000000000002 0 0.577999999999999"
+      rpy="0 0.872664625997167 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="zed2" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+
+  <xacro:include filename="$(find zed_wrapper)/urdf/zed_macro.urdf.xacro" />
+  
+  <xacro:zed_camera name="zed2" model="zed2" enable_gnss="false">
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </xacro:zed_camera>
+
+  <joint name="connect_zed_to_forklift" type="fixed">
+    <parent link="zed2" />    
+    <child link="zed2_camera_link" /> 
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" /> 
   </joint>
 </robot>

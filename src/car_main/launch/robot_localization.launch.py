@@ -13,13 +13,15 @@ def generate_launch_description():
     car_assets_dir = get_package_share_directory('car_assets')
     lidar_pkg_dir = get_package_share_directory('sllidar_ros2')
     view_robot_model_dir = get_package_share_directory('view_robot_model')
+    zed_wrapper_dir = get_package_share_directory('zed_wrapper')
 
     # Define the URDF file path identical to your Mapping configuration
-    urdf_file = PathJoinSubstitution([view_robot_model_dir, 'urdf', 'robot_model.urdf']) 
-    
+    xacro_file_path = PathJoinSubstitution([view_robot_model_dir, 'urdf', 'robot_model.urdf.xacro'])
+    urdf_file = Command(['xacro', ' ', xacro_file_path]) 
+
     amcl_param_path = os.path.join(car_main_dir, 'config', 'amcl.yaml')
     ekf_param_path = os.path.join(car_main_dir, 'config', 'ekf.yaml')
-    default_map_path = os.path.join(car_assets_dir, 'maps', 'home_map2.yaml')
+    default_map_path = os.path.join(car_assets_dir, 'maps', 'map_moi.yaml')
 
     # --- 2. CONFIGURATION ARGUMENTS ---
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
@@ -48,7 +50,8 @@ def generate_launch_description():
         name='robot_state_publisher',
         parameters=[{
             'use_sim_time': use_sim_time,
-            'robot_description': robot_description
+            'robot_description': urdf_file,
+            'publish_frequency': 50.0
         }]
     )
 
@@ -62,6 +65,7 @@ def generate_launch_description():
         output='screen'
     )
 
+
     # Launch the Lidar driver
     lidar_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -73,6 +77,21 @@ def generate_launch_description():
             'serial_port': '/dev/ttyUSB0', 
             'inverted': 'false',
             'angle_compensate': 'true'
+        }.items()
+    )
+    
+    # ZED Camera Launch: Calls official camera sensors
+    zed_camera_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(zed_wrapper_dir, 'launch', 'zed_camera.launch.py')
+        ),
+        launch_arguments={
+            'camera_model': 'zed2',
+            'camera_name': 'zed2',  
+            'publish_tf': 'false',
+            'publish_map_tf': 'false',
+            'common_params_path': os.path.join(car_main_dir, 'config', 'common_stereo.yaml'),
+            'config_path': os.path.join(car_main_dir, 'config', 'zed2.yaml')
         }.items()
     )
 
@@ -125,7 +144,8 @@ def generate_launch_description():
     return LaunchDescription([
         micro_ros_agent,
         rsp_node,           # Robot Model node synchronized with Mapping
-        lidar_launch,      
+        lidar_launch,
+        zed_camera_launch,      
         odom_node,
         ekf_localization,
         map_server_node,
