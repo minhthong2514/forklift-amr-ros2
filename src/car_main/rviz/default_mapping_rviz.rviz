@@ -66,7 +66,7 @@ Visualization Manager:
       Max Color: 255; 255; 255
       Max Intensity: 56
       Min Color: 0; 0; 0
-      Min Intensity: 4
+      Min Intensity: 2
       Name: LaserScan
       Position Transformer: XYZ
       Selectable: true
@@ -310,26 +310,21 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz_default_plugins/Orbit
-      Distance: 6.573862075805664
+      Angle: 0
+      Class: rviz_default_plugins/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: -0.36705273389816284
-        Y: 0.7488715648651123
-        Z: -0.5902186036109924
-      Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Scale: 168.40945434570312
       Target Frame: <Fixed Frame>
-      Value: Orbit (rviz)
-      Yaw: 1.5935821533203125
+      Value: TopDownOrtho (rviz_default_plugins)
+      X: -0.36705273389816284
+      Y: 0.7488715648651123
     Saved: ~
 Window Geometry:
   Displays:

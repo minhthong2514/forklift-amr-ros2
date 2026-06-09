@@ -127,7 +127,7 @@ void setup() {
 
 void loop() {
   // Watchdog dừng motor nếu mất kết nối lệnh (200ms)
-  if (millis() - last_cmd_time > 200) {
+  if (millis() - last_cmd_time > 200) {1
     if (vx_f != 0 || vy_f != 0 || wz_f != 0) {
       vx_f = 0;
       vy_f = 0;
@@ -139,5 +139,5 @@ void loop() {
   update_manual_odom();
 
   // Spin executor với thời gian 10ms để cân bằng hiệu năng
-  RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10)));
+  RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS()));
 }

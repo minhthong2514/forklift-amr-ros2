@@ -142,14 +142,14 @@ class MecanumOdom(Node):
         
         # Set pose covariance (simplified values)
         odom.pose.covariance = [0.0] * 36
-        odom.pose.covariance[0]  = 0.5 
-        odom.pose.covariance[7]  = 0.5
-        odom.pose.covariance[35] = 0.5 
+        odom.pose.covariance[0]  = 0.01
+        odom.pose.covariance[7]  = 0.01
+        odom.pose.covariance[35] = 0.01
 
         odom.twist.covariance = [0.0] * 36
-        odom.twist.covariance[0]  = 0.5  
-        odom.twist.covariance[7]  = 0.5   
-        odom.twist.covariance[35] = 0.5
+        odom.twist.covariance[0]  = 0.01 
+        odom.twist.covariance[7]  = 0.01  
+        odom.twist.covariance[35] = 0.01
         
         self.odom_pub.publish(odom)
 

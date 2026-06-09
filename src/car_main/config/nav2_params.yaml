@@ -73,10 +73,12 @@ controller_server:
   ros__parameters:
     use_sim_time: False
     controller_frequency: 30.0
-    min_x_velocity_threshold: 0.02
+    min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.02
-    min_theta_velocity_threshold: 0.05
-    failure_tolerance: 0.5
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.3
+    odom_topic: "/odometry/filtered"
+    odom_duration: 0.1
     progress_checker_plugin: "progress_checker"
     goal_checker_plugins: ["general_goal_checker"] # "precise_goal_checker"
     controller_plugins: ["FollowPath"]
@@ -101,8 +103,8 @@ controller_server:
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::StoppedGoalChecker"
-      xy_goal_tolerance: 0.1
-      yaw_goal_tolerance: 0.1    #0.05
+      xy_goal_tolerance: 0.05
+      yaw_goal_tolerance: 0.05    #0.05
       rot_stopped_velocity: 0.1
       trans_stopped_velocity: 0.1
 
@@ -110,10 +112,10 @@ controller_server:
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
       debug_trajectory_details: True
-      min_vel_x: -0.20
-      min_vel_y: -0.20
+      min_vel_x: -0.12
       max_vel_x: 0.20
-      max_vel_y: 0.20
+      min_vel_y: -0.10
+      max_vel_y: 0.10
       max_vel_theta: 0.30
       min_speed_xy: 0.02
       max_speed_xy: 0.20
@@ -121,14 +123,14 @@ controller_server:
       # Add high threshold velocity for turtlebot 3 issue.
       # https://github.com/ROBOTIS-GIT/turtlebot3_simulations/issues/75
       acc_lim_x: 0.3
-      acc_lim_y: 0.3
+      acc_lim_y: 0.2
       acc_lim_theta: 0.4
       decel_lim_x: -0.6
-      decel_lim_y: -0.6
+      decel_lim_y: -0.4
       decel_lim_theta: -0.6
-      vx_samples: 10
+      vx_samples: 20
       vy_samples: 5
-      vtheta_samples: 10
+      vtheta_samples: 20
       sim_time: 2.5
       linear_granularity: 0.05
       angular_granularity: 0.025
@@ -147,15 +149,16 @@ controller_server:
       GoalAlign.forward_point_distance: 0.3
       PathDist.scale: 32.0
       GoalDist.scale: 32.0   
-      RotateToGoal.scale: 30.0
+      RotateToGoal.scale: 45.0
       RotateToGoal.slowing_factor: 20.0 
       RotateToGoal.lookahead_time: -1.0
+      RotateToGoal.xy_goal_tolerance: 0.50
       discretize_by_time: True            # BẬT LÊN ĐỂ ROBOT TÍNH TOÁN ĐƯỜNG ĐI THEO THỜI GIAN NGẮN ==> PHÙ HỢP CHO XE CẦN ĐỘ CHÍNH XÁC CAO
 
 global_costmap:
   global_costmap:
     ros__parameters:
-      update_frequency: 2.0
+      update_frequency: 5.0
       publish_frequency: 2.0
       global_frame: map
       robot_base_frame: base_footprint
@@ -235,8 +238,8 @@ global_costmap:
 local_costmap:
   local_costmap:
     ros__parameters:
-      update_frequency: 10.0
-      publish_frequency: 2.0
+      update_frequency: 30.0
+      publish_frequency: 10.0
       global_frame: odom
       robot_base_frame: base_footprint
       use_sim_time: False
@@ -252,7 +255,7 @@ local_costmap:
         [0.150, -0.145], [-0.150, -0.145], [-0.150, -0.220], [-0.27, -0.220]
       ]"
       footprint_padding: 0.0
-      plugins: ["obstacle_layer", "voxel_layer", "inflation_layer"]
+      plugins: ["obstacle_layer", "voxel_layer","inflation_layer"]
       # Obstacle layer
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
@@ -262,7 +265,7 @@ local_costmap:
         combination_method: 1
         scan:
           topic: /scan
-          raytrace_max_range: 3.0
+          raytrace_max_range: 3.5
           raytrace_min_range: 0.2
           obstacle_max_range: 3.0
           obstacle_min_range: 0.2
@@ -283,15 +286,15 @@ local_costmap:
         z_voxels: 16
         max_obstacle_height: 2.0
         unknown_threshold: 15
-        mark_threshold: 0
+        mark_threshold: 3
         observation_sources: pointcloud
         combination_method: 1
-        scan:
-          topic: /zed/zed_node/point_cloud/cloud_registered
-          raytrace_max_range: 3.0
+        pointcloud:
+          topic: /zed2/zed_node/point_cloud/cloud_registered
+          raytrace_max_range: 3.5
           raytrace_min_range: 0.2
           obstacle_max_range: 3.0
-          obstacle_min_range: 0.2
+          obstacle_min_range: 0.2 
           max_obstacle_height: 2.0
           min_obstacle_height: 0.0
           clearing: True
@@ -322,52 +325,88 @@ map_saver:
     occupied_thresh_default: 0.65
     map_subscribe_transient_local: True
 
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 10.0
+    use_sim_time: False
+    planner_plugins: ["GridBased"]
+    GridBased:
+      plugin: "nav2_smac_planner/SmacPlannerHybrid" 
+      # --- Cấu hình cơ bản ---
+      downsample_costmap: false
+      downsampling_factor: 1
+      tolerance: 0.15                 # Ép sai số tìm đường nhỏ hơn (0.25 thay vì 0.5)
+      allow_unknown: true
+      max_iterations: 1000000
+      max_on_approach_iterations: 2000
+      max_planning_time: 5.0
+      
+      # --- Động học cho Xe nâng Mecanum ---
+      motion_model_for_search: "REEDS_SHEPP" # QUAN TRỌNG: Cho phép xe đi lùi (Dubin chỉ cho tiến)
+      angle_quantization_bins: 72            # Sửa lỗi chính tả `_ns`: Chia 360 độ thành 72 góc
+      minimum_turning_radius: 0.65            # Khai báo Mecanum (xoay tại chỗ)
+      use_final_approach_orientation: true   # Ép xe cập bến đúng góc
+      
+      # --- Cấu hình mở rộng quỹ đạo (Analytic Expansion) ---
+      analytic_expansion_ratio: 3.5
+      analytic_expansion_max_length: 3.0
+      analytic_expansion_max_cost: 200.0
+      analytic_expansion_max_cost_override: false
+      
+      # --- Tối ưu hóa hành vi (Penalties) ---
+      reverse_penalty: 3.0           # Giảm từ 2.0 xuống 1.5 để xe không "sợ" đi lùi khi cần lấy pallet
+      change_penalty: 2.0            # Phạt nhẹ khi đổi chiều tiến/lùi liên tục (tránh giật cục)
+      non_straight_penalty: 2.5      # Phạt nhẹ khi đi chéo/ngang để ưu tiên đi thẳng (giảm trượt bánh Mecanum)
+      cost_penalty: 3.5              # Tăng lên 3.0 để ép xe đi vào GIỮA hành lang, tránh xa tường
+      retrospective_penalty: 0.015
+      
+      # --- Cấu hình nội bộ ---
+      lookup_table_size: 20.0
+      cache_obstacle_heuristic: false
+      debug_visualizations: false
+      use_quadratic_cost_penalty: False
+      downsample_obstacle_heuristic: True
+      allow_primitive_interpolation: False
+      coarse_search_resolution: 4
+      goal_heading_mode: "DEFAULT"
+      
+      # --- Bộ làm mượt đường đi tích hợp ---
+      smooth_path: True 
+      smoother:
+        max_iterations: 1000
+        w_smooth: 0.15
+        w_data: 0.45
+        tolerance: 1.0e-10
+        do_refinement: true
+        refinement_num: 2
+
 # planner_server:
 #   ros__parameters:
 #     expected_planner_frequency: 10.0
 #     use_sim_time: False
 #     planner_plugins: ["GridBased"]
 #     GridBased:
-#       plugin: "nav2_smac_planner/SmacPlannerHybrid" 
+#       plugin: "nav2_smac_planner/SmacPlanner2D"
+      
 #       # --- Cấu hình cơ bản ---
 #       downsample_costmap: false
 #       downsampling_factor: 1
-#       tolerance: 0.25                 # Ép sai số tìm đường nhỏ hơn (0.25 thay vì 0.5)
+#       tolerance: 0.25                 
 #       allow_unknown: true
 #       max_iterations: 1000000
 #       max_on_approach_iterations: 1000
 #       max_planning_time: 5.0
       
-#       # --- Động học cho Xe nâng Mecanum ---
-#       motion_model_for_search: "REEDS_SHEPP" # QUAN TRỌNG: Cho phép xe đi lùi (Dubin chỉ cho tiến)
-#       angle_quantization_bins: 72            # Sửa lỗi chính tả `_ns`: Chia 360 độ thành 72 góc
-#       minimum_turning_radius: 0.4            # Khai báo Mecanum (xoay tại chỗ)
-#       use_final_approach_orientation: true   # Ép xe cập bến đúng góc
-      
-#       # --- Cấu hình mở rộng quỹ đạo (Analytic Expansion) ---
-#       analytic_expansion_ratio: 3.5
-#       analytic_expansion_max_length: 3.0
-#       analytic_expansion_max_cost: 200.0
-#       analytic_expansion_max_cost_override: false
-      
-#       # --- Tối ưu hóa hành vi (Penalties) ---
-#       reverse_penalty: 2.5           # Giảm từ 2.0 xuống 1.5 để xe không "sợ" đi lùi khi cần lấy pallet
-#       change_penalty: 0.3            # Phạt nhẹ khi đổi chiều tiến/lùi liên tục (tránh giật cục)
-#       non_straight_penalty: 5.0      # Phạt nhẹ khi đi chéo/ngang để ưu tiên đi thẳng (giảm trượt bánh Mecanum)
-#       cost_penalty: 3.5              # Tăng lên 3.0 để ép xe đi vào GIỮA hành lang, tránh xa tường
-#       retrospective_penalty: 0.015
-      
-#       # --- Cấu hình nội bộ ---
-#       lookup_table_size: 20.0
-#       cache_obstacle_heuristic: false
-#       debug_visualizations: false
-#       use_quadratic_cost_penalty: False
-#       downsample_obstacle_heuristic: True
-#       allow_primitive_interpolation: False
-#       coarse_search_resolution: 4
-#       goal_heading_mode: "DEFAULT"
+#       # --- Điều hướng và Đích đến ---
+#       # Đổi tên từ cost_penalty (của Hybrid) sang cost_travel_multiplier (của 2D)
+#       # Giữ nguyên mức 3.5 để ép xe đi thẳng vào TÂM HẺM, tránh xa vách tường
+#       # cost_travel_multiplier: 8.5       
+#       cost_travel_multiplier: 12.0      
+#       use_final_approach_orientation: false   # Tôn trọng góc Theta đích của người dùng
       
 #       # --- Bộ làm mượt đường đi tích hợp ---
+#       # 2D Planner vạch đường gấp khúc vuông góc, nên giữ lại bộ Smoother này 
+#       # để làm dịu bớt các góc cua, giúp bộ DWB chạy mượt hơn.
 #       smooth_path: True 
 #       smoother:
 #         max_iterations: 1000
@@ -376,42 +415,6 @@ map_saver:
 #         tolerance: 1.0e-10
 #         do_refinement: true
 #         refinement_num: 2
-
-planner_server:
-  ros__parameters:
-    expected_planner_frequency: 10.0
-    use_sim_time: False
-    planner_plugins: ["GridBased"]
-    GridBased:
-      plugin: "nav2_smac_planner/SmacPlanner2D"
-      
-      # --- Cấu hình cơ bản ---
-      downsample_costmap: false
-      downsampling_factor: 1
-      tolerance: 0.25                 
-      allow_unknown: true
-      max_iterations: 1000000
-      max_on_approach_iterations: 1000
-      max_planning_time: 5.0
-      
-      # --- Điều hướng và Đích đến ---
-      # Đổi tên từ cost_penalty (của Hybrid) sang cost_travel_multiplier (của 2D)
-      # Giữ nguyên mức 3.5 để ép xe đi thẳng vào TÂM HẺM, tránh xa vách tường
-      # cost_travel_multiplier: 8.5       
-      cost_travel_multiplier: 12.0      
-      use_final_approach_orientation: false   # Tôn trọng góc Theta đích của người dùng
-      
-      # --- Bộ làm mượt đường đi tích hợp ---
-      # 2D Planner vạch đường gấp khúc vuông góc, nên giữ lại bộ Smoother này 
-      # để làm dịu bớt các góc cua, giúp bộ DWB chạy mượt hơn.
-      smooth_path: True 
-      smoother:
-        max_iterations: 1000
-        w_smooth: 0.3
-        w_data: 0.2
-        tolerance: 1.0e-10
-        do_refinement: true
-        refinement_num: 2
 
 smoother_server:
   ros__parameters:
