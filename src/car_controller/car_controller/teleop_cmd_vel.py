@@ -27,7 +27,7 @@ class TeleopCmdVel(Node):
         self.target_vy = 0.0
         self.target_wz = 0.0
 
-        self.speed = 0.20
+        self.speed = 0.30
         self.turn  = 0.20
 
         self.last_key_time = time.time()

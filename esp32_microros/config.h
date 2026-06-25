@@ -12,6 +12,8 @@
 #include <std_msgs/msg/int32_multi_array.h>
 #include <sensor_msgs/msg/imu.h>
 #include <rmw_microros/rmw_microros.h>
+#include <std_msgs/msg/int8.h>
+#include <std_msgs/msg/bool.h>
 
 /* --- 1. SETTINGS & PINS --- */
 #define LED_PIN 2
@@ -23,6 +25,17 @@
 #define RL_DIR 16
 #define RR_STEP 33
 #define RR_DIR 32
+#define LIFT_STEP 13
+#define LIFT_DIR 12
+#define LIMIT_SWITCH 14
+
+#define LIMIT_HEIGHT 20.5f
+#define PulsePerRound 800        
+#define DistPerRound 0.5f       // Bước ren vitme (0.5cm/vòng)
+#define LIFT_SPEED 110        
+#define LIFT_HEIGHT 15.0f    // Khoảng cách nâng cố định (15 cm)
+
+//extern float CURRENT_POSITION;
 
 const float WHEEL_RADIUS = 0.05, L = 0.3965; // Lx (0.205) + Ly (0.1915)
 const int STEPS_PER_REV = 800;
@@ -53,6 +66,11 @@ extern float vx_f, vy_f, wz_f;
 extern float current_wheel_hz[4];
 extern unsigned long last_cmd_time;
 
+extern rcl_subscription_t lift_sub;
+extern std_msgs__msg__Int8 lift_msg;
+extern rcl_publisher_t pub_lift_status;
+extern std_msgs__msg__Bool lift_status_msg;
+
 #define RCCHECK(fn) \
   { \
     rcl_ret_t temp_rc = fn; \
@@ -67,6 +85,7 @@ extern unsigned long last_cmd_time;
 void error_loop();
 void cmd_vel_cb(const void* msgin);
 void publish_timer_cb(rcl_timer_t* timer, int64_t last_call_time);
+void lift_cmd_callback(const void * msgin);
 
 /* --- 3. HÀM KHỞI TẠO --- */
 inline void InitMotors() {
@@ -132,6 +151,9 @@ inline void InitMicroros() {
   RCCHECK(rclc_publisher_init_default(&pub_ticks, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32MultiArray), "/wheel_ticks"));
   RCCHECK(rclc_publisher_init_best_effort(&pub_imu, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu), "/imu_data"));
 
+  RCCHECK(rclc_publisher_init_default(&pub_lift_status, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Bool), "/lift_status"));
+  RCCHECK(rclc_subscription_init_default(&lift_sub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int8), "/lift_cmd"));
+
   static int32_t ticks_mem[4] = { 0, 0, 0, 0 };
   ticks_msg.data.capacity = 4;
   ticks_msg.data.size = 4;
@@ -148,5 +170,6 @@ inline void InitMicroros() {
   RCCHECK(rclc_executor_init(&executor, &support.context, 4, &allocator));
   RCCHECK(rclc_executor_add_timer(&executor, &pub_timer));
   RCCHECK(rclc_executor_add_subscription(&executor, &cmd_sub, &cmd_msg, &cmd_vel_cb, ON_NEW_DATA));
+  RCCHECK(rclc_executor_add_subscription(&executor, &lift_sub, &lift_msg, &lift_cmd_callback, ON_NEW_DATA));
 }
 #endif

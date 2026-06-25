@@ -112,14 +112,14 @@ controller_server:
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
       debug_trajectory_details: True
-      min_vel_x: -0.12
-      max_vel_x: 0.20
-      min_vel_y: -0.10
-      max_vel_y: 0.10
+      min_vel_x: -0.10
+      max_vel_x: 0.30
+      min_vel_y: -0.15
+      max_vel_y: 0.15
       max_vel_theta: 0.30
       min_speed_xy: 0.02
       max_speed_xy: 0.20
-      min_speed_theta: 0.08
+      min_speed_theta: 0.10
       # Add high threshold velocity for turtlebot 3 issue.
       # https://github.com/ROBOTIS-GIT/turtlebot3_simulations/issues/75
       acc_lim_x: 0.3
@@ -128,9 +128,9 @@ controller_server:
       decel_lim_x: -0.6
       decel_lim_y: -0.4
       decel_lim_theta: -0.6
-      vx_samples: 20
+      vx_samples: 10
       vy_samples: 5
-      vtheta_samples: 20
+      vtheta_samples: 5
       sim_time: 2.5
       linear_granularity: 0.05
       angular_granularity: 0.025
@@ -159,7 +159,7 @@ global_costmap:
   global_costmap:
     ros__parameters:
       update_frequency: 5.0
-      publish_frequency: 2.0
+      publish_frequency: 5.0
       global_frame: map
       robot_base_frame: base_footprint
       use_sim_time: False
@@ -231,7 +231,7 @@ global_costmap:
         inflate_unknown: false
         inflate_around_unknown: true
         cost_scaling_factor: 15.0
-        inflation_radius: 0.65                            # Đây có khoảng cách an toàn tính từ tâm xe tới vị trí xe nhất (lấy trừ hao thềm khoảng 15-20cm nữa)
+        inflation_radius: 0.70                           # Đây có khoảng cách an toàn tính từ tâm xe tới vị trí xe nhất (lấy trừ hao thềm khoảng 15-20cm nữa)
       always_send_full_costmap: True
       introspection_mode: "disabled"
 
@@ -296,7 +296,7 @@ local_costmap:
           obstacle_max_range: 3.0
           obstacle_min_range: 0.2 
           max_obstacle_height: 2.0
-          min_obstacle_height: 0.0
+          min_obstacle_height: 0.05
           clearing: True
           marking: True
           data_type: "PointCloud2"
@@ -306,7 +306,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 15.0
-        inflation_radius: 0.65                             
+        inflation_radius: 0.70                             
       always_send_full_costmap: True  
       introspection_mode: "disabled"
     
@@ -342,7 +342,7 @@ planner_server:
       max_planning_time: 5.0
       
       # --- Động học cho Xe nâng Mecanum ---
-      motion_model_for_search: "REEDS_SHEPP" # QUAN TRỌNG: Cho phép xe đi lùi (Dubin chỉ cho tiến)
+      motion_model_for_search: "REEDS_SHEPP" # QUAN TRỌNG: Cho phép xe đi lùi (Dubin chỉ cho tiến nguoc lai REEDS_SHEPP)
       angle_quantization_bins: 72            # Sửa lỗi chính tả `_ns`: Chia 360 độ thành 72 góc
       minimum_turning_radius: 0.65            # Khai báo Mecanum (xoay tại chỗ)
       use_final_approach_orientation: true   # Ép xe cập bến đúng góc
@@ -482,8 +482,8 @@ velocity_smoother:
     scale_velocities: False
     feedback: "OPEN_LOOP" 
     # feedback: "CLOSED_LOOP"
-    max_velocity: [0.20, 0.20, 0.30]
-    min_velocity: [-0.20, -0.20, -0.30]
+    max_velocity: [0.30, 0.15, 0.30]
+    min_velocity: [-0.10, -0.15, -0.10]
     max_accel: [0.3, 0.3, 0.4]
     max_decel: [-0.6, -0.6, -0.6]
     # odom_topic: "odom"

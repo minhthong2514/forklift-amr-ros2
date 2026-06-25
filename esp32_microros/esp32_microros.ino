@@ -1,6 +1,7 @@
 #include "config.h"
 #include "motor.h"
 #include "sensor.h"
+#include "lift.h"
 
 /* --- ĐỊNH NGHĨA THỰC TẾ --- */
 BNO bno(&Wire, 0x28);
@@ -17,6 +18,11 @@ rcl_allocator_t allocator;
 geometry_msgs__msg__Twist cmd_msg;
 std_msgs__msg__Int32MultiArray ticks_msg;
 sensor_msgs__msg__Imu imu_msg;
+
+rcl_subscription_t lift_sub;
+std_msgs__msg__Int8 lift_msg;
+rcl_publisher_t pub_lift_status;
+std_msgs__msg__Bool lift_status_msg;
 
 float vx_f = 0, vy_f = 0, wz_f = 0;
 float current_wheel_hz[4] = { 0, 0, 0, 0 };
@@ -59,7 +65,7 @@ void cmd_vel_cb(const void *msgin) {
     vx_f = 0;
     vy_f = 0;
     wz_f = 0;
-    stop_all_motors();  
+    stop_all_motors();
   } else {
     update_manual_odom();
     set_mecanum_speed(vx_f, vy_f, wz_f);
@@ -110,10 +116,24 @@ void publish_timer_cb(rcl_timer_t *timer, int64_t last_call_time) {
   toggle_bit = !toggle_bit;
 }
 
+//// Hàm này tự kích hoạt khi Jetson gửi số 1 (Nâng) hoặc 0 (Hạ)
+void lift_cmd_callback(const void *msgin) {
+  const std_msgs__msg__Int8 *msg = (const std_msgs__msg__Int8 *) msgin;
+  control_lift(msg->data);
+}
+
 void setup() {
   pinMode(LED_PIN, OUTPUT);
+  // engine.init();
+  pinMode(LIMIT_SWITCH, INPUT_PULLUP);
+  pinMode(LIFT_STEP, OUTPUT);
+  pinMode(LIFT_DIR, OUTPUT);
+  digitalWrite(LIFT_STEP, LOW);
+
   // micro-ROS vận hành trên cổng Serial 921600
   InitMicroros();
+  homing();
+
 
   // Khởi tạo Bus I2C với các thông số an toàn
   Wire.begin();
@@ -123,11 +143,13 @@ void setup() {
   InitSensors();
   InitMotors();
   last_odom_update = micros();
+
 }
 
 void loop() {
+  //  check_lift_status();
   // Watchdog dừng motor nếu mất kết nối lệnh (200ms)
-  if (millis() - last_cmd_time > 200) {1
+  if (millis() - last_cmd_time > 200) {
     if (vx_f != 0 || vy_f != 0 || wz_f != 0) {
       vx_f = 0;
       vy_f = 0;
@@ -139,5 +161,5 @@ void loop() {
   update_manual_odom();
 
   // Spin executor với thời gian 10ms để cân bằng hiệu năng
-  RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS()));
+  RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10)));
 }

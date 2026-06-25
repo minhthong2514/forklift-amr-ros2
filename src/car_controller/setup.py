@@ -25,6 +25,10 @@ setup(
     entry_points={
         'console_scripts': [
             'teleop_cmd_vel = car_controller.teleop_cmd_vel:main',
+            'test_nav2_only = car_controller.test_nav2_only:main',
+            'testdocking = car_controller.testdocking:main',
+            'dockinglive = car_controller.dockinglive:main',
+            'master_brain = car_controller.master_brain:main',
         ],
     },
 )

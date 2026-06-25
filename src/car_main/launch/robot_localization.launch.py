@@ -21,7 +21,7 @@ def generate_launch_description():
 
     amcl_param_path = os.path.join(car_main_dir, 'config', 'amcl.yaml')
     ekf_param_path = os.path.join(car_main_dir, 'config', 'ekf.yaml')
-    default_map_path = os.path.join(car_assets_dir, 'maps', 'map_moi.yaml')
+    default_map_path = os.path.join(car_assets_dir, 'maps', 'map_214.yaml')
 
     # --- 2. CONFIGURATION ARGUMENTS ---
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
@@ -51,7 +51,7 @@ def generate_launch_description():
         parameters=[{
             'use_sim_time': use_sim_time,
             'robot_description': urdf_file,
-            'publish_frequency': 50.0
+            'publish_frequency': 30.0
         }]
     )
 
