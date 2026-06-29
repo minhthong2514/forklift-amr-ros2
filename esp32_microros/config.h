@@ -30,9 +30,9 @@
 #define LIMIT_SWITCH 14
 
 #define LIMIT_HEIGHT 20.5f
-#define PulsePerRound 800        
+#define PulsePerRound 800
 #define DistPerRound 0.5f       // Bước ren vitme (0.5cm/vòng)
-#define LIFT_SPEED 110        
+#define LIFT_SPEED 150
 #define LIFT_HEIGHT 15.0f    // Khoảng cách nâng cố định (15 cm)
 
 //extern float CURRENT_POSITION;
@@ -48,7 +48,7 @@ const float deg_to_rad = PI / 180.0;
 typedef DFRobot_BNO055_IIC BNO;
 extern BNO bno;
 extern FastAccelStepperEngine engine;
-extern FastAccelStepper *motor_fl, *motor_fr, *motor_rl, *motor_rr;
+extern FastAccelStepper *motor_fl, *motor_fr, *motor_rl, *motor_rr, *motor_lift;
 
 extern rcl_node_t node;
 extern rcl_subscription_t cmd_sub;
@@ -98,8 +98,11 @@ inline void InitMotors() {
   motor_rl->setDirectionPin(RL_DIR);
   motor_rr = engine.stepperConnectToPin(RR_STEP);
   motor_rr->setDirectionPin(RR_DIR);
-  FastAccelStepper* m[4] = { motor_fl, motor_fr, motor_rl, motor_rr };
-  for (int i = 0; i < 4; i++) {
+  motor_lift = engine.stepperConnectToPin(LIFT_STEP);
+  motor_lift->setDirectionPin(LIFT_DIR);
+
+  FastAccelStepper* m[5] = { motor_fl, motor_fr, motor_rl, motor_rr, motor_lift };
+  for (int i = 0; i < 5; i++) {
     m[i]->setAcceleration(5000);  // Giảm gia tốc xuống 5000 để êm hơn
     m[i]->setAutoEnable(true);
   }
@@ -107,10 +110,10 @@ inline void InitMotors() {
 
 inline void InitSensors() {
   bno.reset();
-  
+
   uint8_t retry = 0;
-  while (bno.begin() != BNO::eStatusOK && retry < 10) { 
-    delay(100); 
+  while (bno.begin() != BNO::eStatusOK && retry < 10) {
+    delay(100);
     retry++;
   }
 
@@ -118,7 +121,7 @@ inline void InitSensors() {
   delay(100);
 
   BNO::sAxisAnalog_t sOffsetGyr;
-  sOffsetGyr.x = 0; 
+  sOffsetGyr.x = 0;
   sOffsetGyr.y = 0;
   sOffsetGyr.z = 0.04; // Giá trị bạn đã đo được để triệt tiêu Gz
 
@@ -130,10 +133,10 @@ inline void InitSensors() {
   bno.setAxisOffset(BNO::eAxisGyr, sOffsetGyr);
   bno.setAxisOffset(BNO::eAxisAcc, sOffsetAcc);
 
-  bno.setOprMode(BNO::eOprModeImu); 
-  
-  delay(3000); 
-  
+  bno.setOprMode(BNO::eOprModeImu);
+
+  delay(3000);
+
   // Serial.println("IMU initialized with Hardware Offsets and 6-DOF mode.");
 }
 

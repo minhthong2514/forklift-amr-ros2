@@ -112,25 +112,25 @@ controller_server:
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
       debug_trajectory_details: True
-      min_vel_x: -0.10
-      max_vel_x: 0.30
-      min_vel_y: -0.15
-      max_vel_y: 0.15
-      max_vel_theta: 0.30
+      min_vel_x: -0.15
+      max_vel_x: 0.35
+      min_vel_y: -0.20
+      max_vel_y: 0.20
+      max_vel_theta: 0.35
       min_speed_xy: 0.02
-      max_speed_xy: 0.20
-      min_speed_theta: 0.10
+      max_speed_xy: 0.25
+      min_speed_theta: 0.15
       # Add high threshold velocity for turtlebot 3 issue.
       # https://github.com/ROBOTIS-GIT/turtlebot3_simulations/issues/75
-      acc_lim_x: 0.3
-      acc_lim_y: 0.2
-      acc_lim_theta: 0.4
-      decel_lim_x: -0.6
-      decel_lim_y: -0.4
-      decel_lim_theta: -0.6
+      acc_lim_x: 0.5
+      acc_lim_y: 0.3
+      acc_lim_theta: 0.5
+      decel_lim_x: -0.8
+      decel_lim_y: -0.5
+      decel_lim_theta: -0.8
       vx_samples: 10
-      vy_samples: 5
-      vtheta_samples: 5
+      vy_samples: 8
+      vtheta_samples: 10
       sim_time: 2.5
       linear_granularity: 0.05
       angular_granularity: 0.025
@@ -143,12 +143,12 @@ controller_server:
       # critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
       # BaseObstacle.scale: 10.0
       ObstacleFootprint.scale: 0.05    
-      PathAlign.scale: 64.0
+      PathAlign.scale: 85.0
       PathAlign.forward_point_distance: 0.3
-      GoalAlign.scale: 48.0
+      GoalAlign.scale: 32.0
       GoalAlign.forward_point_distance: 0.3
-      PathDist.scale: 32.0
-      GoalDist.scale: 32.0   
+      PathDist.scale: 45.0
+      GoalDist.scale: 20.0   
       RotateToGoal.scale: 45.0
       RotateToGoal.slowing_factor: 20.0 
       RotateToGoal.lookahead_time: -1.0
@@ -356,7 +356,7 @@ planner_server:
       # --- Tối ưu hóa hành vi (Penalties) ---
       reverse_penalty: 3.0           # Giảm từ 2.0 xuống 1.5 để xe không "sợ" đi lùi khi cần lấy pallet
       change_penalty: 2.0            # Phạt nhẹ khi đổi chiều tiến/lùi liên tục (tránh giật cục)
-      non_straight_penalty: 2.5      # Phạt nhẹ khi đi chéo/ngang để ưu tiên đi thẳng (giảm trượt bánh Mecanum)
+      non_straight_penalty: 3.5      # Phạt nhẹ khi đi chéo/ngang để ưu tiên đi thẳng (giảm trượt bánh Mecanum)
       cost_penalty: 3.5              # Tăng lên 3.0 để ép xe đi vào GIỮA hành lang, tránh xa tường
       retrospective_penalty: 0.015
       
@@ -482,10 +482,10 @@ velocity_smoother:
     scale_velocities: False
     feedback: "OPEN_LOOP" 
     # feedback: "CLOSED_LOOP"
-    max_velocity: [0.30, 0.15, 0.30]
-    min_velocity: [-0.10, -0.15, -0.10]
-    max_accel: [0.3, 0.3, 0.4]
-    max_decel: [-0.6, -0.6, -0.6]
+    max_velocity: [0.35, 0.20, 0.35]
+    min_velocity: [-0.15, -0.20, -0.35]
+    max_accel: [0.5, 0.3, 0.5]
+    max_decel: [-0.8, -0.5, -0.8]
     # odom_topic: "odom"
     odom_topic: "odometry/filtered"
     odom_duration: 0.1

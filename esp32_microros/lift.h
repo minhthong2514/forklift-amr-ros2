@@ -3,108 +3,92 @@
 
 #include "config.h"
 
-// Khai báo công cụ báo cáo cho ROS 2 (Sẽ khởi tạo ở file .ino)
 extern rcl_publisher_t pub_lift_status;
 extern std_msgs__msg__Bool lift_status_msg;
 bool is_lifting_active = false;
-int current_lift_state = 0;
+int current_lift_state = 0; // 0: Đang ở dưới (0cm), 1: Đang ở trên (15cm)
 
-//extern float CURRENT_POSITION;
-// Hàm tính số xung dựa trên khoảng cách (cm)
+extern FastAccelStepperEngine engine;
+FastAccelStepper *motor_lift = NULL;
+
 int CalculateSteps(float dist) {
   return (int)((PulsePerRound * abs(dist)) / DistPerRound);
 }
 
-// Hàm tính tần số (Hz) từ tốc độ RPM
 int CalculateFrequency(int RPM) {
-  int frequency = (abs(RPM) * PulsePerRound) / 60;
-  return frequency;
+  return (abs(RPM) * PulsePerRound) / 60;
 }
 
-// Hàm tạo xung mềm theo tần số mong muốn
-void generatePulses(int totalSteps, int frequency) {
-  if (frequency <= 0) return;
-
-  long T = 1000000 / frequency; // Chu kỳ xung (microseconds)
-  long T_HIGH = 50;             // Thời gian mức cao cố định 50us
-  long T_LOW = T - T_HIGH;      // Thời gian mức thấp
-
-  if (T_LOW < 50) T_LOW = 50;   // Bảo vệ nếu tần số quá cao
-
-  for (int i = 0; i < totalSteps; i++) {
-    digitalWrite(LIFT_STEP, HIGH);
-    delayMicroseconds(T_HIGH);
-    digitalWrite(LIFT_STEP, LOW);
-    delayMicroseconds(T_LOW);
+// ==============================================================
+// HÀM HOMING ĐƯỢC THIẾT KẾ ĐỂ KHÔNG LÀM RỚT MẠNG MICRO-ROS
+// ==============================================================
+inline void homing(rclc_executor_t *executor) {
+  if (!motor_lift) return;
+  
+  if (digitalRead(LIMIT_SWITCH) == 1) {
+    current_lift_state = 0;
+    motor_lift->setCurrentPosition(0); // Set gốc tọa độ 0
+    return;
   }
-}
 
-// Hàm quay thuận (Nâng lên) - Sử dụng LIFT_SPEED tổng
-inline void rotateForward(float dist) {
-  int steps = CalculateSteps(dist);
-  digitalWrite(LIFT_DIR, HIGH);
-  int freq = CalculateFrequency(LIFT_SPEED); // Lấy tốc độ tổng
-  generatePulses(steps, freq);
-}
+  Serial.println("Bat dau Homing...");
+  motor_lift->setSpeedInHz(CalculateFrequency(LIFT_SPEED));
+  motor_lift->setAcceleration(5000); 
+  motor_lift->runBackward(); // Cho động cơ chạy lùi liên tục
 
-// Hàm quay nghịch (Hạ xuống) - Sử dụng LIFT_SPEED tổng
-inline void rotateBackward(float dist) {
-  int steps = CalculateSteps(dist);
-  digitalWrite(LIFT_DIR, LOW);
-  int freq = CalculateFrequency(LIFT_SPEED); // Lấy tốc độ tổng
-  generatePulses(steps, freq);
-}
-
-// Hàm tìm điểm gốc (Homing) - Sử dụng LIFT_SPEED tổng
-inline void homing() {
-  digitalWrite(LIFT_DIR, LOW);
-
-  int freq = CalculateFrequency(LIFT_SPEED); // Lấy tốc độ tổng
-  long T = 1000000 / freq;
-  long T_HALF = T / 2;
-  //
-  //  Serial.print("Dang Homing voi toc do tong... Tan so: ");
-  //  Serial.print(freq);
-  //  Serial.println(" Hz");
-
+  // Vòng lặp chờ chạm công tắc
   while (digitalRead(LIMIT_SWITCH) != 1) {
-    digitalWrite(LIFT_STEP, HIGH);
-    delayMicroseconds(T_HALF);
-    digitalWrite(LIFT_STEP, LOW);
-    delayMicroseconds(T_HALF);
+    // QUAN TRỌNG NHẤT: Trong lúc chờ động cơ chạy, vẫn phải cho micro-ROS hoạt động
+    // để Jetson không nghĩ rằng ESP32 đã chết!
+    if (executor != NULL) {
+      rclc_executor_spin_some(executor, RCL_MS_TO_NS(10));
+    }
+    delay(5); 
   }
 
-  //  CURRENT_POSITION = 0.0f;
-  //  Serial.println("Homing HOAN THANH! Vi tri hien tai da reset ve 0.0 cm");
+  // Đã chạm công tắc -> Dừng khẩn cấp
+  motor_lift->forceStopAndNewPosition(0); 
+  current_lift_state = 0;
+}
+
+// ==============================================================
+// CÁC HÀM ĐIỀU KHIỂN BẰNG THƯ VIỆN FASTACCELSTEPPER
+// ==============================================================
+void rotateForward(float dist) {
+  int32_t steps = CalculateSteps(dist);
+  motor_lift->setSpeedInHz(CalculateFrequency(LIFT_SPEED));
+  motor_lift->moveTo(steps); // Chạy tới vị trí tuyệt đối
+}
+
+void rotateBackward(float dist) {
+  motor_lift->setSpeedInHz(CalculateFrequency(LIFT_SPEED));
+  motor_lift->moveTo(0); // Chạy lùi về đúng gốc 0 đã set lúc Homing
 }
 
 inline void control_lift(int cmd) {
-  // Chỉ nâng khi có lệnh Nâng (1) VÀ càng đang ở dưới (0)
+  if (!motor_lift) return;
+  if (motor_lift->isRunning()) return; // Đang chạy dở thì bỏ qua lệnh mới
+
   if (cmd == 1 && current_lift_state == 0) {
     rotateForward(LIFT_HEIGHT);
     is_lifting_active = true;
-    current_lift_state = 1; // Cập nhật trạng thái đã nâng
+    current_lift_state = 1; 
 
-    // Chỉ hạ khi có lệnh Hạ (0) VÀ càng đang ở trên (1)
   } else if (cmd == 0 && current_lift_state == 1) {
     rotateBackward(LIFT_HEIGHT);
     is_lifting_active = true;
-    current_lift_state = 0; // Cập nhật trạng thái đã hạ
-  }
-  else {
-    // Nếu gửi lệnh trùng lặp, ESP32 sẽ bỏ qua không làm gì cả
-    //    Serial.println("Bo qua lenh nang/ha vi trung lap trang thai!");
-    return;
+    current_lift_state = 0; 
   }
 }
 
-inline void check_lift_status() {
-  // Nếu cờ đang bật (motor đang được giao việc) NHƯNG motor đã ngừng quay (isRunning = false)
-  // Tức là nó đã chạy đến đích thành công.
-  if (is_lifting_active) {
-    is_lifting_active = false; // Tắt cờ
+// Báo cáo trạng thái về Jetson
+void check_lift_status() {
+  if (!motor_lift) return;
 
-    // Gửi tin nhắn True lên Topic /lift_status cho Jetson biết
+  bool currently_moving = motor_lift->isRunning();
+
+  if (is_lifting_active && !currently_moving) {
+    is_lifting_active = false;
     lift_status_msg.data = true;
     rcl_publish(&pub_lift_status, &lift_status_msg, NULL);
   }

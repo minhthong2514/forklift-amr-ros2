@@ -74,28 +74,16 @@ void cmd_vel_cb(const void *msgin) {
 
 void publish_timer_cb(rcl_timer_t *timer, int64_t last_call_time) {
   if (timer == NULL) return;
-
-  // 1. Luôn cập nhật Odom nội bộ để đảm bảo độ chính xác
   update_manual_odom();
-
   static bool toggle_bit = true;
-  // struct timespec ts;
-  // clock_gettime(CLOCK_REALTIME, &ts);
 
   int64_t time_ns = rmw_uros_epoch_nanos();
-
-  // 2. Chia nhịp gửi dữ liệu (Interleaving)
-  // Việc này giúp Bus I2C không bị ép cùng lúc với tác vụ gửi Serial nặng
   if (toggle_bit) {
-    // NHỊP A: Gửi Odom Ticks
     for (int i = 0; i < 4; i++) ticks_msg.data.data[i] = (int32_t)manual_ticks[i];
     RCSOFTCHECK(rcl_publish(&pub_ticks, &ticks_msg, NULL));
   } else {
-    // NHỊP B: Đọc và Gửi IMU
     IMURawData raw = readSensor();
     if (!isnan(raw.qw)) {
-      // imu_msg.header.stamp.sec = ts.tv_sec;
-      // imu_msg.header.stamp.nanosec = ts.tv_nsec;
       imu_msg.header.stamp.sec = (int32_t)(time_ns / 1000000000);
       imu_msg.header.stamp.nanosec = (uint32_t)(time_ns % 1000000000);
 
@@ -116,7 +104,6 @@ void publish_timer_cb(rcl_timer_t *timer, int64_t last_call_time) {
   toggle_bit = !toggle_bit;
 }
 
-//// Hàm này tự kích hoạt khi Jetson gửi số 1 (Nâng) hoặc 0 (Hạ)
 void lift_cmd_callback(const void *msgin) {
   const std_msgs__msg__Int8 *msg = (const std_msgs__msg__Int8 *) msgin;
   control_lift(msg->data);
@@ -124,42 +111,38 @@ void lift_cmd_callback(const void *msgin) {
 
 void setup() {
   pinMode(LED_PIN, OUTPUT);
-  // engine.init();
   pinMode(LIMIT_SWITCH, INPUT_PULLUP);
-  pinMode(LIFT_STEP, OUTPUT);
-  pinMode(LIFT_DIR, OUTPUT);
-  digitalWrite(LIFT_STEP, LOW);
+  //  pinMode(LIFT_STEP, OUTPUT);
+  //  pinMode(LIFT_DIR, OUTPUT);
+  //  digitalWrite(LIFT_STEP, LOW);
 
-  // micro-ROS vận hành trên cổng Serial 921600
   InitMicroros();
-  homing();
 
-
-  // Khởi tạo Bus I2C với các thông số an toàn
   Wire.begin();
   Wire.setClock(100000);
-  Wire.setTimeOut(10);  // Quan trọng: Tránh treo chip khi nhiễu bus
+  Wire.setTimeOut(10);
 
   InitSensors();
   InitMotors();
+  homing(&executor);
+  
   last_odom_update = micros();
-
 }
 
 void loop() {
-  //  check_lift_status();
-  // Watchdog dừng motor nếu mất kết nối lệnh (200ms)
-  if (millis() - last_cmd_time > 200) {
+  // 1. Kiểm tra và gửi trạng thái nâng hạ về Jetson
+  check_lift_status();
+
+  // Watchdog dừng motor bánh xe nếu mất kết nối
+  if (millis() - last_cmd_time > 500) {
     if (vx_f != 0 || vy_f != 0 || wz_f != 0) {
-      vx_f = 0;
-      vy_f = 0;
-      wz_f = 0;
+      vx_f = 0; vy_f = 0; wz_f = 0;
       stop_all_motors();
     }
   }
 
   update_manual_odom();
 
-  // Spin executor với thời gian 10ms để cân bằng hiệu năng
+  // Spin executor của micro-ROS
   RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10)));
 }
