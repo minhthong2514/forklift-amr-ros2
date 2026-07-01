@@ -3,39 +3,98 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from nav2_msgs.action import NavigateToPose
-from action_msgs.msg import GoalStatus 
+from action_msgs.msg import GoalStatus
+from geometry_msgs.msg import PoseWithCovarianceStamped
 import time
+import csv
+import os
 
-class Nav2OnlyTestNode(Node):
+class Nav2AccuracyTestNode(Node):
     def __init__(self):
-        super().__init__('nav2_only_test_node')
+        super().__init__('nav2_accuracy_test_node')
 
+        # Action Client gửi lệnh cho Nav2
         self.nav_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
 
-        self.PICKUP_POSE = {
-            'x': 2.2543599201220976, 'y': -0.43436129078981633, 
-            'z': 0.7292691236459413, 'w': 0.6842269691386629 
+        # Subscriber lắng nghe vị trí thực tế từ AMCL
+        self.pose_sub = self.create_subscription(
+            PoseWithCovarianceStamped,
+            '/amcl_pose',
+            self.amcl_pose_callback,
+            10
+        )
+
+        # Tọa độ khởi tạo thực tế của anh
+        self.GOAL_POSE = {
+            'x': 4.472296478097551, 'y': -0.8228745070170737, 
+            'z': -0.6138053793350687, 'w': 0.7894573809265022
+        }
+        self.HOME_POSE = {
+            'x': 0.0, 'y': 0.0, 
+            'z': 0.0, 'w': 1.0
         }
 
-        self.DROPOFF_POSE = {
-            'x': -6.906173430938212, 'y': 0.597566915831788, 
-            'z': -0.7094737548603341, 'w': 0.7047318576340781
-        }
-        self.STATE_GO_TO_PICKUP = 1
-        self.STATE_GO_TO_DROPOFF = 2
-        self.current_state = self.STATE_GO_TO_PICKUP
-
-        self.get_logger().info("Node Test Nav2 Đã Sẵn Sàng. Đợi 3 giây để xuất phát...")
+        # Quản lý Trạng thái & Bộ đếm
+        self.STATE_GO_TO_GOAL = 1  
+        self.STATE_GO_TO_HOME = 2  
+        self.current_state = self.STATE_GO_TO_GOAL
         
-        # SỬA CHỖ NÀY: Gán timer vào một biến để lát nữa gọi lệnh tắt
+        self.loop_count = 0        
+        self.max_loops = 10
+
+        # Biến lưu vị trí thực tế hiện tại từ AMCL và thời gian bấm giờ
+        self.current_x = 0.0
+        self.current_y = 0.0
+        self.start_time = None
+
+        # Khởi tạo file CSV
+        self.csv_filename = "nav2_accuracy_test_results.csv"
+        self.init_csv_file()
+
+        # Khai báo biến quản lý timer delay (tránh blocking node)
+        self.delay_timer = None
+
+        self.get_logger().info("=====================================================")
+        self.get_logger().info(f"Node Test Độ Chính Xác Nav2 Sẵn Sàng. Kết quả lưu tại: {self.csv_filename}")
+        self.get_logger().info("Đợi 3 giây để xuất phát...")
+        self.get_logger().info("=====================================================")
+        
         self.start_timer = self.create_timer(3.0, self.start_mission)
 
+    def init_csv_file(self):
+        """Khởi tạo file CSV và ghi dòng tiêu đề (Header)"""
+        if not os.path.exists(self.csv_filename):
+            with open(self.csv_filename, mode='w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    "Lần_Chạy", "X_Đích", "X_Thực_Tế", "Y_Đích", "Y_Thực_Tế", 
+                    "Thời_Gian_Hoàn_Thành", "Trạng_Thái"
+                ])
+
+    def amcl_pose_callback(self, msg):
+        """Cập nhật liên tục vị trí thực tế của robot từ hệ thống định vị"""
+        self.current_x = msg.pose.pose.position.x
+        self.current_y = msg.pose.pose.position.y
+
     def start_mission(self):
-        # SỬA CHỖ NÀY: Tắt timer ngay lập tức để nó không bao giờ lặp lại nữa!
         self.start_timer.cancel() 
-        
-        self.get_logger().info(">>> BẮT ĐẦU: Tiến về trạm Lấy hàng (Chỉ gửi 1 lần duy nhất!)")
-        self.send_nav_goal(self.PICKUP_POSE)
+        self.execute_next_step()
+
+    def execute_next_step(self):
+        """Điều hướng luồng chạy dựa trên trạng thái hiện tại"""
+        if self.loop_count >= self.max_loops:
+            self.get_logger().info(f"=== ĐÃ HOÀN THÀNH ĐỦ {self.max_loops} LẦN TEST! Dừng Node ===")
+            rclpy.shutdown()
+            return
+
+        if self.current_state == self.STATE_GO_TO_GOAL:
+            self.get_logger().info(f"\n>>> [LẦN CHẠY {self.loop_count + 1}/10]: Tiến về GOAL POSE...")
+            self.start_time = time.time() 
+            self.send_nav_goal(self.GOAL_POSE)
+            
+        elif self.current_state == self.STATE_GO_TO_HOME:
+            self.get_logger().info(">>> [PHỤC HỒI]: Tự động quay về HOME POSE...")
+            self.send_nav_goal(self.HOME_POSE)
 
     def send_nav_goal(self, pose_dict):
         self.nav_client.wait_for_server()
@@ -54,44 +113,66 @@ class Nav2OnlyTestNode(Node):
     def nav_goal_accepted_callback(self, future):
         goal_handle = future.result()
         if not goal_handle.accepted:
-            self.get_logger().error("Nav2 từ chối Goal!")
+            self.get_logger().error("Nav2 từ chối Goal! Thử lại sau 2 giây...")
+            self.start_delay_timer(2.0, self.execute_next_step)
             return
         
-        self.get_logger().info("Nav2 đã nhận lệnh. Bánh xe đang lăn...")
         result_future = goal_handle.get_result_async()
-        
-        # Chờ Nav2 phản hồi kết quả cuối cùng
         result_future.add_done_callback(self.nav_result_callback)
 
     def nav_result_callback(self, future):
         status = future.result().status
         
-        # TẠI ĐÂY LÀ CHỖ CHỐT HẠ: CHỈ KHI TRẠNG THÁI LÀ SUCCEEDED MỚI LÀM TIẾP
-        if status == GoalStatus.STATUS_SUCCEEDED:
-            self.get_logger().info(">>> NAV2 XÁC NHẬN: ĐÃ ĐẾN CHÍNH XÁC TỌA ĐỘ!")
-
-            if self.current_state == self.STATE_GO_TO_PICKUP:
-                self.get_logger().info("Bắt đầu quy trình LẤY HÀNG (đợi 5 giây)...")
-                time.sleep(5.0) # Robot sẽ đứng im 5 giây ở đây
+        if self.current_state == self.STATE_GO_TO_GOAL:
+            # XỬ LÝ LƯỢT ĐI (TEST)
+            duration = round(time.time() - self.start_time, 2) if self.start_time else 0.0
+            status_str = "SUCCEEDED" if status == GoalStatus.STATUS_SUCCEEDED else f"FAILED_{status}"
+            
+            # Ghi dữ liệu trực tiếp vào CSV
+            with open(self.csv_filename, mode='a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    self.loop_count + 1,
+                    self.GOAL_POSE['x'], self.current_x,
+                    self.GOAL_POSE['y'], self.current_y,
+                    duration, status_str
+                ])
                 
-                self.current_state = self.STATE_GO_TO_DROPOFF
-                self.get_logger().info(">>> Nâng xong! Gửi tọa độ trạm Bỏ hàng.")
-                self.send_nav_goal(self.DROPOFF_POSE)
-                
-            elif self.current_state == self.STATE_GO_TO_DROPOFF:
-                self.get_logger().info("Bắt đầu quy trình BỎ HÀNG (đợi 5 giây)...")
-                time.sleep(5.0)
+            self.get_logger().info(f"-> Đã ghi dữ liệu Lần {self.loop_count + 1}. Thời gian di chuyển: {duration}s")
+            self.get_logger().info("Nghỉ ổn định 2 giây tại Goal trước khi quay đầu...")
+            
+            # Đổi sang trạng thái về Home và tạo khoảng trễ ngắn an toàn cho robot dừng hẳn
+            self.current_state = self.STATE_GO_TO_HOME
+            self.start_delay_timer(2.0, self.execute_next_step)
 
-                self.current_state = self.STATE_GO_TO_PICKUP
-                self.get_logger().info("=== HOÀN THÀNH 1 VÒNG === Gửi lại tọa độ Lấy hàng.")
-                self.send_nav_goal(self.PICKUP_POSE)
-        else:
-            # Nếu xe bị kẹt, bị hủy lệnh, hoặc không đến được, nó sẽ in ra cảnh báo này
-            self.get_logger().warn(f"CẢNH BÁO: Nav2 chưa đến được đích (Mã trạng thái: {status}). Hủy quy trình nâng hạ!")
+        elif self.current_state == self.STATE_GO_TO_HOME:
+            # XỬ LÝ LƯỢT VỀ (PHỤC HỒI)
+            if status == GoalStatus.STATUS_SUCCEEDED:
+                self.loop_count += 1
+                self.get_logger().info("-> Đã về Home thành công. Nghỉ 3 giây chuẩn bị lượt tiếp theo...")
+                
+                # Cập nhật trạng thái mới và tạo trễ an toàn bằng Timer thay vì time.sleep()
+                self.current_state = self.STATE_GO_TO_GOAL
+                self.start_delay_timer(3.0, self.execute_next_step)
+            else:
+                self.get_logger().warn("Lỗi khi quay về Home! Thử gửi lại lệnh sau 2 giây...")
+                self.start_delay_timer(2.0, self.execute_next_step)
+
+    def start_delay_timer(self, seconds, callback_func):
+        """Hàm phụ trợ tạo khoảng trễ bất đồng bộ (Non-blocking)"""
+        if self.delay_timer is not None:
+            self.delay_timer.cancel()
+        
+        def timer_callback():
+            self.delay_timer.cancel()
+            callback_func()
+
+        self.delay_timer = self.create_timer(seconds, timer_callback)
+
 
 def main(args=None):
     rclpy.init(args=args)
-    node = Nav2OnlyTestNode()
+    node = Nav2AccuracyTestNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
