@@ -144,5 +144,5 @@ void loop() {
   update_manual_odom();
 
   // Spin executor của micro-ROS
-  RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10)));
+  RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1)));
 }

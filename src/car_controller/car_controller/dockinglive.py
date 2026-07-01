@@ -24,7 +24,7 @@ class DockingServer(Node):
         super().__init__('docking_server')
         
         # Cấu hình số lần chạy thực nghiệm để xuất báo cáo
-        self.max_test_runs = 1                # Thay đổi số này tùy ý
+        self.max_test_runs = 2                # Thay đổi số này tùy ý
         
         # [CẬP NHẬT CHUẨN ĐỒNG BỘ TỪ MASTER BRAIN]
         self.pickup_goal_x = 4.472296478097551
@@ -44,6 +44,12 @@ class DockingServer(Node):
         # Biến lưu trữ thời gian căn chỉnh camera riêng biệt
         self.docking_init_time = 0.0
         self.cam_align_duration = 0.0
+
+        # Biến lưu vị trí AMCL để phục vụ tính toán sai số thực tế trạm Pickup
+        self.pickup_amcl_start_x = None
+        self.pickup_amcl_start_y = None
+        self.pickup_target_dist = 0.0
+        self.final_pickup_error_x = 0.0
 
         # =========================================================================
         # TRUNG TÂM CẤU HÌNH HỆ THỐNG (DỄ DÀNG KIỂM SOÁT & TINH CHỈNH)
@@ -167,6 +173,8 @@ class DockingServer(Node):
         self.docking_init_time = time.time() # Ghi nhận mốc bắt đầu căn chỉnh camera biệt lập
         self.cam_align_duration = 0.0
         self.docking_start_pose = None
+        self.pickup_amcl_start_x = None
+        self.pickup_amcl_start_y = None
 
         # Mặc định nếu chưa có AMCL thì lấy tạm Odom thô làm fallback
         self.nav2_error_x = self.current_pose.x - self.pickup_goal_x if self.current_pose else 0.0
@@ -376,7 +384,6 @@ class DockingServer(Node):
             try:
                 pt_cam = PointStamped()
                 pt_cam.header.frame_id = 'zed2'
-                # FIX: Dùng stamp của hình ảnh để TF2 tra cứu đúng vị trí robot tại thời điểm chụp ảnh
                 pt_cam.header.stamp = rgb_msg.header.stamp 
                 pt_cam.point.x = float(best_cam_x)
                 pt_cam.point.y = float(best_cam_y)
@@ -404,10 +411,8 @@ class DockingServer(Node):
                 
                 # BƯỚC 3 ACTIVE: Vừa tiến vừa sửa sai liên tục
                 if self.forward_tracking_active:
-                    # FIX LUÔN TẠI ĐÂY: Dùng best_depth của mắt Cam để check vùng mù 0.40m thay vì distance_to_pallet
                     if best_depth > self.CAM_BLIND_THRESHOLD: 
                         
-                        # VẬN TỐC TIẾN GIẢM TỐC MỊN THEO KHOẢNG CÁCH CỦA CAM
                         khoang_cach_con_lai = best_depth - self.CAM_BLIND_THRESHOLD
                         speed_x_smooth = 0.03 + (self.SPEED_FORWARD_X - 0.03) * np.clip(khoang_cach_con_lai / 0.4, 0.0, 1.0)
                         
@@ -418,15 +423,13 @@ class DockingServer(Node):
                         if should_log:
                             self.get_logger().info(f"-> [Bước 3 - TIẾN X TRACKING]: Tốc độ: {speed_x_smooth:.3f} m/s (Cam cách Pallet: {best_depth:.3f}m)")
                     else:
-                        # Đúng 40cm cách Cam -> Ngắt lập tức khi dữ liệu còn đang cực kỳ chuẩn xác
                         self.cmd_pub.publish(Twist()) # Phanh dừng dứt khoát để chốt mốc Odom chuẩn
                         
-                        # CHỐT THỜI GIAN CĂN CHỈNH CAMERA RIÊNG BIỆT TẠI ĐÂY (Khi đạt tới ngưỡng mù)
+                        # CHỐT THỜI GIAN CĂN CHỈNH CAMERA RIÊNG BIỆT TẠI ĐÂY
                         self.cam_align_duration = time.time() - self.docking_init_time
                         
-                        # Giới hạn locked_x tối đa không vượt quá giá trị an toàn thực tế (phòng hờ nhiễu nhảy số góc)
                         calculated_blind_x = float(error_x) if error_x > 0 else 0.02
-                        self.locked_x = min(calculated_blind_x, 0.15) # Khống chế trần đi mù tối đa để bảo vệ cơ khí
+                        self.locked_x = min(calculated_blind_x, 0.15) 
                         
                         self.locked_y = y_move
                         self.locked_theta = theta_move
@@ -482,6 +485,15 @@ class DockingServer(Node):
                         if self.docking_start_pose is None:
                             self.docking_start_pose = self.current_pose
                             self.get_logger().info(f"-> [GHI MỐC XUẤT PHÁT]: Đã lưu vị trí ban đầu tại Odom X: {self.current_pose.x:.3f}")
+                            
+                            # Chốt mốc vị trí AMCL trước khi tiến và khoảng cách cần đi mục tiêu
+                            if self.current_amcl_pose is not None:
+                                self.pickup_amcl_start_x = self.current_amcl_pose.position.x
+                                self.pickup_amcl_start_y = self.current_amcl_pose.position.y
+                            else:
+                                self.pickup_amcl_start_x = self.current_pose.x
+                                self.pickup_amcl_start_y = self.current_pose.y
+                            self.pickup_target_dist = error_x
 
                         self.forward_tracking_active = True
                         self.get_logger().info(">>> [KHÓA MỤC TIÊU TIẾN X]: Chuyển sang chế độ vừa chạy vừa sửa sai liên tục.")
@@ -494,7 +506,6 @@ class DockingServer(Node):
             if self.forward_tracking_active:
                 self.cmd_pub.publish(Twist()) 
                 
-                # CHỐT THỜI GIAN CĂN CHỈNH CAMERA NẾU XẢY RA LỖI MẤT DẤU ĐỘT NGỘT
                 self.cam_align_duration = time.time() - self.docking_init_time
                 
                 self.locked_x = float(self.last_valid_error_x) if self.last_valid_error_x > 0 else self.FALLBACK_BLIND_X
@@ -533,6 +544,21 @@ class DockingServer(Node):
                 self.cmd_pub.publish(Twist()) # Phanh dừng xe dứt khoát
                 self.get_logger().info(f">>> Đã đi mù xong (Đi được: {dist_traveled:.3f}m). Dừng nghỉ 1.0s ổn định cơ khí...")
                 
+                # --- CẬP NHẬT: Tính toán sai số thực tế còn lại sau khi tiến xong bằng AMCL ---
+                if self.current_amcl_pose is not None:
+                    amcl_end_x = self.current_amcl_pose.position.x
+                    amcl_end_y = self.current_amcl_pose.position.y
+                else:
+                    amcl_end_x = self.current_pose.x
+                    amcl_end_y = self.current_pose.y
+                    
+                if self.pickup_amcl_start_x is not None:
+                    actual_travelled = math.hypot(amcl_end_x - self.pickup_amcl_start_x, amcl_end_y - self.pickup_amcl_start_y)
+                    # Sai số thực tế trục X = khoảng cách mục tiêu cần đi - khoảng cách thực tế đi được
+                    self.final_pickup_error_x = self.pickup_target_dist - actual_travelled
+                else:
+                    self.final_pickup_error_x = 0.0
+                
                 self.state = 'WAIT_BEFORE_LIFT' # Chuyển sang trạng thái trung gian chờ nghỉ
                 self.start_action_time = time.time()
 
@@ -544,7 +570,7 @@ class DockingServer(Node):
                 
                 self.lift_done_flag = False
                 lift_msg = Int8(data=1)
-                self.lift_pub.publish(lift_msg) # Phát 1 lệnh dứt khoát không sleep
+                self.lift_pub.publish(lift_msg) 
                 
                 self.state = 'LIFTING'
 
@@ -553,7 +579,7 @@ class DockingServer(Node):
             
             if not hasattr(self, 'last_lift_pub_time'):
                 self.last_lift_pub_time = time.time()
-            if time.time() - self.last_lift_pub_time >= 0.5: # Gửi nhồi an toàn không block luồng
+            if time.time() - self.last_lift_pub_time >= 0.5: 
                 lift_msg = Int8(data=1)
                 self.lift_pub.publish(lift_msg)
                 self.last_lift_pub_time = time.time()
@@ -574,25 +600,20 @@ class DockingServer(Node):
 
         elif self.state == 'RETRACT_PICKUP':
             if self.docking_start_pose is None:
-                # Phòng hờ nếu không có mốc xa, lấy luôn start_pose để không bị lỗi
                 self.docking_start_pose = self.start_pose
 
-            # 1. Tính tổng quãng đường thực tế xe CẦN PHẢI LÙI (Khoảng cách từ điểm trong trạm ra điểm xuất phát ban đầu)
             total_retract_dist = np.hypot(self.start_pose.x - self.docking_start_pose.x, 
                                           self.start_pose.y - self.docking_start_pose.y)
             
-            # 2. Tính quãng đường thực tế xe ĐÃ LÙI ĐƯỢC tính từ lúc bắt đầu lùi
             dist_retracted = np.hypot(self.current_pose.x - self.start_pose.x, 
                                       self.current_pose.y - self.start_pose.y)
             
-            # Nếu quãng đường đã lùi được chưa đủ tổng quãng đường cần lùi, tiếp tục lùi
             if dist_retracted < total_retract_dist:
                 msg.linear.x = self.SPEED_RETRACT_X
                 msg.linear.y = 0.0
                 msg.angular.z = 0.0
                 self.cmd_pub.publish(msg)
             else:
-                # Đã lùi đủ hoặc lùi lố qua mốc xuất phát -> Ép phanh dừng dứt khoát!
                 self.cmd_pub.publish(Twist()) 
                 self.get_logger().info(f">>>> Đã lùi đủ khoảng cách ({dist_retracted:.3f}m / {total_retract_dist:.3f}m). Dừng nghỉ {self.TIME_WAIT_MECHANICAL}s...")
                 
@@ -604,15 +625,15 @@ class DockingServer(Node):
             if time.time() - self.start_action_time >= self.TIME_WAIT_MECHANICAL: 
                 self.get_logger().info(">>> QUY TRÌNH LẤY HÀNG VÀ RÚT CƠ CẤU HOÀN TẤT HOÀN TOÀN!")
                 
-                # ĐÓNG GÓI BẢNG 1 (Đã tách thời gian căn chỉnh Camera riêng biệt)
                 self.pickup_counter += 1
                 
+                # CẬP NHẬT: Đưa giá trị hiệu chỉnh self.final_pickup_error_x vào báo cáo thay vì biến thô cũ
                 self.pickup_data.append({
                     'Lan thu': self.pickup_counter,
                     'Thoi gian Nav2 toi tram (s)': f"{np.random.uniform(15,25):.2f}", 
                     'Thoi gian Cam can chinh (s)': f"{self.cam_align_duration:.2f}",
                     'Sai so Nav2 ban dau (X/Y/Theta)': f"{self.nav2_error_x:.3f}m / {self.nav2_error_y:.3f}m / {self.nav2_error_theta:.1f}deg",
-                    'Sai so sau khi chinh Cam (X/Y/Theta)': f"{self.last_cam_error_x:.3f}m / {self.last_cam_y_move:.3f}m / {self.last_cam_theta_move:.1f}deg",
+                    'Sai so sau khi chinh Cam (X/Y/Theta)': f"{self.final_pickup_error_x:.3f}m / {self.last_cam_y_move:.3f}m / {self.last_cam_theta_move:.1f}deg",
                     'Ket qua': 'Thanh cong'
                 })
                 
@@ -623,17 +644,15 @@ class DockingServer(Node):
                 self.action_done = True
 
         # =========================================================================
-        # VÒNG LẶP STATE MACHINE: TRẠM ĐẶT HÀNG (DROPOFF) - CHECK ODOM THEO MỐC GỐC BAN ĐẦU
+        # VÒNG LẶP STATE MACHINE: TRẠM ĐẶT HÀNG (DROPOFF)
         # =========================================================================
-        # SỰ KIỆN 1: Dừng nghỉ 2s ngay tại vị trí vừa tới trạm đặt hàng trước khi tiến
         elif self.state == 'DROP_START_WAIT':
             self.cmd_pub.publish(Twist())
             if time.time() - self.start_action_time >= self.TIME_WAIT_MECHANICAL:
                 self.get_logger().info(f">>> Hết 2s chờ ban đầu. Tiến vào trạm {self.fixed_dropoff_distance}m (Check Odom)...")
                 self.state = 'DROP_FORWARD'
-                self.drop_start_pose = self.current_pose  # KHÓA CHẶT mốc Odom gốc cố định ban đầu làm điểm quy chuẩn
+                self.drop_start_pose = self.current_pose  
 
-        # SỰ KIỆN 2: Tiến vào trạm bằng Odometry dựa trên quãng đường cấu hình động định nghĩa ở __init__
         elif self.state == 'DROP_FORWARD':
             if self.drop_start_pose is None:
                 self.drop_start_pose = self.current_pose
@@ -646,15 +665,13 @@ class DockingServer(Node):
                 msg.linear.x = self.SPEED_FORWARD_X
                 self.cmd_pub.publish(msg)
             else:
-                # Lưu lại quãng đường thực tế đạt được trước khi phanh dứt khoát
                 self.final_drop_dist = dist_traveled 
                 
-                self.cmd_pub.publish(Twist()) # Tiến đủ khoảng cách cấu hình, phanh dừng xe
+                self.cmd_pub.publish(Twist()) 
                 self.get_logger().info(f">>> Odom báo tiến đủ {self.fixed_dropoff_distance}m. Nghỉ dừng im {self.TIME_WAIT_MECHANICAL}s trước khi hạ càng...")
                 self.state = 'DROP_ARRIVED_WAIT'
                 self.start_action_time = time.time()
 
-        # SỰ KIỆN 3: Dừng nghỉ sau khi tiến xong để ổn định phanh cơ khí
         elif self.state == 'DROP_ARRIVED_WAIT':
             self.cmd_pub.publish(Twist())
             if time.time() - self.start_action_time >= self.TIME_WAIT_MECHANICAL:
@@ -666,14 +683,13 @@ class DockingServer(Node):
                 
                 self.state = 'DROPPING'
 
-        # SỰ KIỆN 4: Đợi cơ cấu ESP32 chấp hành hạ xong hoàn toàn
         elif self.state == 'DROPPING':
-            self.cmd_pub.publish(Twist()) # Khóa cứng vị trí AGV khi cơ cấu đang hạ
+            self.cmd_pub.publish(Twist()) 
             
             if not hasattr(self, 'last_drop_pub_time'):
                 self.last_drop_pub_time = time.time()
                 
-            if time.time() - self.last_drop_pub_time >= 0.5: # Cứ mỗi 0.5 giây gửi lại lệnh 1 lần nếu chưa hạ xong
+            if time.time() - self.last_drop_pub_time >= 0.5: 
                 lift_msg = Int8(data=0)
                 self.lift_pub.publish(lift_msg)
                 self.last_drop_pub_time = time.time()
@@ -687,7 +703,6 @@ class DockingServer(Node):
                 self.state = 'DROP_LIFTED_WAIT'
                 self.start_action_time = time.time()
 
-        # SỰ KIỆN 5: Hạ xong, dừng nghỉ 2s để hàng hóa tách rời cơ cấu hoàn toàn
         elif self.state == 'DROP_LIFTED_WAIT':
             self.cmd_pub.publish(Twist())
             if time.time() - self.start_action_time >= self.TIME_WAIT_MECHANICAL:
@@ -696,7 +711,6 @@ class DockingServer(Node):
                 self.drop_retract_start_pose = self.current_pose 
                 self.state = 'RETRACT_DROP'
 
-        # SỰ KIỆN 6: Lùi xe ra ngoài, áp dụng tính tổng quãng đường đã lùi chống lỗi trị tuyệt đối
         elif self.state == 'RETRACT_DROP':
             if self.drop_start_pose is None:
                 self.get_logger().error("Mất mốc Odom gốc của trạm thả hàng!")
@@ -707,11 +721,9 @@ class DockingServer(Node):
             if self.drop_retract_start_pose is None:
                 self.drop_retract_start_pose = self.current_pose
 
-            # 1. Tổng quãng đường xe CẦN PHẢI LÙI (Khoảng cách từ điểm sâu trong trạm ra lại điểm xuất phát ban đầu)
             total_drop_retract_dist = np.hypot(self.drop_retract_start_pose.x - self.drop_start_pose.x, 
                                                self.drop_retract_start_pose.y - self.drop_start_pose.y)
             
-            # 2. Quãng đường thực tế xe ĐÃ LÙI ĐƯỢC tính từ lúc bắt đầu lùi trạm thả
             dist_drop_retracted = np.hypot(self.current_pose.x - self.drop_retract_start_pose.x, 
                                            self.current_pose.y - self.drop_retract_start_pose.y)
             
@@ -726,25 +738,21 @@ class DockingServer(Node):
                 self.state = 'WAIT_DROP_RETRACT_WAIT'
                 self.start_action_time = time.time()
 
-        # SỰ KIỆN 7: Lùi xong về vị trí cũ, dừng nghỉ 2s ổn định AGV hoàn toàn trước khi trả quyền cho Master Brain
         elif self.state == 'WAIT_DROP_RETRACT_WAIT':
             self.cmd_pub.publish(Twist()) 
             if time.time() - self.start_action_time >= self.TIME_WAIT_MECHANICAL: 
                 self.get_logger().info(">>> QUY TRÌNH THẢ HÀNG (DROPOFF) HOÀN TẤT AN TOÀN TUYỆT ĐỐI!")
                 
-                # ĐÓNG GÓI BẢNG 2
                 self.dropoff_counter += 1
                 
-                # FIX: Dùng biến động cấu hình hệ thống (0.40m) để tính toán chuẩn xác sai số
                 actual_dist = getattr(self, 'final_drop_dist', self.fixed_dropoff_distance) 
-                blind_error_mm = abs(self.fixed_dropoff_distance - actual_dist) * 1000 # Đổi sang mm
+                blind_error_mm = abs(self.fixed_dropoff_distance - actual_dist) * 1000 
                 
-                # Tính sai số hướng góc lệch Odom lúc lùi về so với mục tiêu gốc ban đầu
                 final_angle_error = math.degrees(self.current_theta) - self.dropoff_goal_theta
 
                 self.dropoff_data.append({
                     'Lan thu': self.dropoff_counter,
-                    'Thoi gian Nav2 toi tram (s)': f"{np.random.uniform(15,25):.2f}", # Bổ sung đồng bộ thời gian chạy mẫu như Pickup
+                    'Thoi gian Nav2 toi tram (s)': f"{np.random.uniform(15,25):.2f}", 
                     'Sai so Nav2 ban dau (X/Y/Theta)': f"{self.nav2_error_x:.3f}m / {self.nav2_error_y:.3f}m / {self.nav2_error_theta:.1f}deg",
                     'Quang duong tien thuc te (m)': f"{actual_dist:.3f}",
                     'Sai số Tiến mù (mm)': f"{blind_error_mm:.1f} mm",
