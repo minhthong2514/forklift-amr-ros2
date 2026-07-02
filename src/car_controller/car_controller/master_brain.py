@@ -5,6 +5,7 @@ from rclpy.action import ActionClient
 from nav2_msgs.action import NavigateToPose
 from action_msgs.msg import GoalStatus 
 from std_srvs.srv import Trigger
+import time
 
 class MasterBrain(Node):
     def __init__(self):
@@ -16,10 +17,17 @@ class MasterBrain(Node):
         self.docking_client = self.create_client(Trigger, 'start_docking')
         self.dropoff_client = self.create_client(Trigger, 'start_dropoff')
 
-        # self.PICKUP_POSE = {'x': 0.9898801273585425, 'y': 2.5434634660084776, 'z': 0.005471447589904, 'w': 0.9999850315186077}
+        # =========================================================================
+        # CẤU HÌNH TỌA ĐỘ CÁC ĐIỂM MẪU (HỆ TOẠ ĐỘ MAP)
+        # =========================================================================
+        # [THÊM MỚI]: Ông điền tọa độ điểm HOME thực tế của bãi test vào đây nhé
+        self.HOME_POSE = {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0} 
+        
         self.PICKUP_POSE = {'x': 4.472296478097551, 'y': -0.8228745070170737, 'z': -0.6138053793350687, 'w': 0.7894573809265022}
         self.DROPOFF_POSE = {'x': 2.25411928005759, 'y': 2.430015761398594, 'z': 0.7171808132907074, 'w': 0.6968871365204551}
 
+        # Định nghĩa các trạng thái của State Machine
+        self.STATE_GO_TO_HOME = 0     # <--- TRẠNG THÁI MỚI: Về điểm tập kết để nhất quán mẫu
         self.STATE_GO_TO_PICKUP = 1
         self.STATE_GO_TO_DROPOFF = 2
         
@@ -27,9 +35,11 @@ class MasterBrain(Node):
         while not self.docking_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Đang chờ Docking Server...')
 
-        self.current_state = self.STATE_GO_TO_PICKUP
+        # KHỞI TẠO LUỒNG: Ép xe di chuyển về HOME trước tiên để làm mốc chuẩn cho mẫu số 1
+        self.current_state = self.STATE_GO_TO_HOME
         self.get_logger().info("=== MASTER BRAIN KHỞI ĐỘNG ===")
-        self.send_nav_goal(self.PICKUP_POSE)
+        self.get_logger().info(">>> Kích hoạt: Di chuyển về vị trí HOME ban đầu để chuẩn hóa chu kỳ...")
+        self.send_nav_goal(self.HOME_POSE)
 
     def send_nav_goal(self, pose_dict):
         goal_msg = NavigateToPose.Goal()
@@ -53,7 +63,17 @@ class MasterBrain(Node):
     def get_result_callback(self, future):
         status = future.result().status
         if status == GoalStatus.STATUS_SUCCEEDED:
-            if self.current_state == self.STATE_GO_TO_PICKUP:
+            
+            # CHUYỂN ĐỔI LOGIC TẠI ĐIỂM HOME
+            if self.current_state == self.STATE_GO_TO_HOME:
+                self.get_logger().info(">>> NAV2: Đã về vị trí HOME thành công! Nghỉ 3 giây để dập tắt quán tính và ổn định định vị...")
+                time.sleep(3.0) # Nghỉ tĩnh 3s đồng bộ mẫu
+                
+                self.get_logger().info(">>> Hết 3 giây nghỉ. Xuất phát đi tới trạm LẤY HÀNG (Pickup)...")
+                self.current_state = self.STATE_GO_TO_PICKUP
+                self.send_nav_goal(self.PICKUP_POSE)
+                
+            elif self.current_state == self.STATE_GO_TO_PICKUP:
                 self.get_logger().info(">>> NAV2: Đã đến điểm lấy hàng! Giao quyền cho Camera...")
                 req = Trigger.Request()
                 future_dock = self.docking_client.call_async(req)
@@ -76,9 +96,10 @@ class MasterBrain(Node):
     def dropoff_done_callback(self, future):
         res = future.result()
         if res.success:
-            self.get_logger().info("=== HOÀN TẤT 1 VÒNG === Quay lại trạm Pickup.")
-            self.current_state = self.STATE_GO_TO_PICKUP
-            self.send_nav_goal(self.PICKUP_POSE)
+            self.get_logger().info("=== HOÀN TẤT XONG 1 CHU KỲ (PICKUP + DROPOFF) ===")
+            self.get_logger().info(">>> Điều hướng xe quay trở lại vị trí HOME để chuẩn bị cho lượt test kế tiếp...")
+            self.current_state = self.STATE_GO_TO_HOME
+            self.send_nav_goal(self.HOME_POSE)
 
 def main(args=None):
     rclpy.init(args=args)
