@@ -104,19 +104,19 @@ class DockingServer(Node):
         self.current_theta = 0.0  
         self.start_pose = None        # Dùng cho việc tiến lùi trạm Pickup
         self.drop_start_pose = None   # Mốc Odom gốc cố định của trạm Dropoff để tính tiến/lùi không sai số
-        
-        self.odom_sub = self.create_subscription(Odometry, '/odometry/filtered', self.odom_callback, 10)
-        self.amcl_sub = self.create_subscription(PoseWithCovarianceStamped, '/amcl_pose',self.amcl_callback,10)
+
+        self.cb_group_subs = ReentrantCallbackGroup()
+        self.odom_sub = self.create_subscription(Odometry, '/odometry/filtered', self.odom_callback, 10, callback_group=self.cb_group_subs)
+        self.amcl_sub = self.create_subscription(PoseWithCovarianceStamped, '/amcl_pose',self.amcl_callback, 10, callback_group=self.cb_group_subs)
+        self.master_state_sub = self.create_subscription(Int8, '/master_brain_state', self.master_state_callback, 10, callback_group=self.cb_group_subs)
 
         self.current_amcl_pose = None
         # Bộ phát/nhận tín hiệu điều khiển di chuyển và cơ cấu nâng hạ ESP32
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.lift_pub = self.create_publisher(Int8, '/lift_cmd', 10) 
-        
+
         self.lift_done_flag = False
-        self.lift_status_sub = self.create_subscription(
-            Bool, '/lift_status', self.lift_status_cb, 10, callback_group=self.cb_group_service
-        )
+        self.lift_status_sub = self.create_subscription(Bool, '/lift_status', self.lift_status_cb, 10, callback_group=self.cb_group_service)
 
         # Cung cấp dịch vụ (Services) cho Master Brain gọi điều hướng
         self.srv_dock = self.create_service(Trigger, 'start_docking', self.docking_callback, callback_group=self.cb_group_service)
@@ -153,6 +153,12 @@ class DockingServer(Node):
         
         self.last_cam_log_time = time.time()
         self.get_logger().info("=== DOCKING SERVER SẴN SÀNG CHẠY TỰ ĐỘNG ===")
+
+    def master_state_callback(self, msg):
+        # Khi nhận được tín hiệu số 1 (Xuất phát đi tới trạm Pickup)
+        if msg.data == 1:
+            self.nav2_start_time = time.time()
+            self.get_logger().info("--> [ĐỒNG BỘ] Đã nhận tín hiệu xuất phát từ Master Brain. Bắt đầu tính thời gian Nav2!")
 
     def odom_callback(self, msg):
         self.current_pose = msg.pose.pose.position
