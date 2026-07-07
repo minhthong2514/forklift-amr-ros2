@@ -24,7 +24,7 @@ class DockingServer(Node):
         super().__init__('docking_server')
         
         # Cấu hình số lần chạy thực nghiệm để xuất báo cáo
-        self.max_test_runs = 2                # Thay đổi số này tùy ý
+        self.max_test_runs = 5                # Thay đổi số này tùy ý
         
         # [CẬP NHẬT CHUẨN ĐỒNG BỘ TỪ MASTER BRAIN]
         self.pickup_goal_x = 4.472296478097551

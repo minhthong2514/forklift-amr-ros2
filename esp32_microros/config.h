@@ -168,7 +168,7 @@ inline void InitMicroros() {
   imu_msg.header.frame_id.capacity = strlen(imu_name) + 1;
 
   // Cài đặt Timer 20ms (50Hz)
-  RCCHECK(rclc_timer_init_default(&pub_timer, &support, 1000000000ULL / 100, publish_timer_cb)); //60hz
+  RCCHECK(rclc_timer_init_default(&pub_timer, &support, 1000000000ULL / 70, publish_timer_cb)); //60hz
   // RCCHECK(rclc_timer_init_default(&pub_timer, &support, RCL_MS_TO_NS(20), publish_timer_cb));
   RCCHECK(rclc_executor_init(&executor, &support.context, 4, &allocator));
   RCCHECK(rclc_executor_add_timer(&executor, &pub_timer));
