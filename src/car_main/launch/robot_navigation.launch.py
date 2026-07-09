@@ -5,6 +5,8 @@ from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from nav2_common.launch import RewrittenYaml
+from launch_ros.descriptions import ComposableNode
+from launch_ros.actions import ComposableNodeContainer
 
 def generate_launch_description():
     # --- 1. PATH TO YOUR PACKAGE ---
@@ -46,6 +48,26 @@ def generate_launch_description():
             param_rewrites=param_substitutions,
             convert_types=True)
     
+    crop_box_container = ComposableNodeContainer(
+        name='crop_box_container',
+        namespace='',
+        package='rclcpp_components',
+        executable='component_container',
+        composable_node_descriptions=[
+            ComposableNode(
+                package='pcl_ros',
+                plugin='pcl_ros::CropBox',      
+                name='crop_box_filter_node',     
+                parameters=[configured_params],  
+                remappings=[
+                    ('input', '/zed2/zed_node/point_cloud/cloud_registered'),
+                    ('output', '/zed2/zed_node/point_cloud/cloud_registered_filtered')
+                ]
+            )
+        ],
+        output='screen'
+    )
+
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
@@ -115,6 +137,6 @@ def generate_launch_description():
              parameters=[{'use_sim_time': use_sim_time},
                          {'autostart': autostart},
                          {'node_names': lifecycle_nodes}]),
-        
+        crop_box_container,
         rviz_node
     ])

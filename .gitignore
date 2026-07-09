@@ -2,6 +2,7 @@
 build/
 install/
 log/
+draw_trajectory/
 
 # Micro-ROS generated source folders
 src/ros2/
