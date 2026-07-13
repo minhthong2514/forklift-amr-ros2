@@ -14,6 +14,7 @@ def generate_launch_description():
     lidar_pkg_dir = get_package_share_directory('sllidar_ros2')
     view_robot_model_dir = get_package_share_directory('view_robot_model')
     zed_wrapper_dir = get_package_share_directory('zed_wrapper')
+    crop_box_dir = get_package_share_directory("pointcloud_crop_box")
 
     # Define the URDF file path identical to your Mapping configuration
     xacro_file_path = PathJoinSubstitution([view_robot_model_dir, 'urdf', 'robot_model.urdf.xacro'])
@@ -22,6 +23,7 @@ def generate_launch_description():
     amcl_param_path = os.path.join(car_main_dir, 'config', 'amcl.yaml')
     ekf_param_path = os.path.join(car_main_dir, 'config', 'ekf.yaml')
     default_map_path = os.path.join(car_assets_dir, 'maps', 'map_214.yaml')
+    crop_box_path = os.path.join(crop_box_dir,"config","pointcloud_crop_box_params.yaml",)
 
     # --- 2. CONFIGURATION ARGUMENTS ---
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
@@ -141,6 +143,14 @@ def generate_launch_description():
                     {"node_names": ['map_server', 'amcl']}]
     )
 
+    crop_box_pointcloud = Node(
+        package="pointcloud_crop_box",
+        executable="pointcloud_crop_box_node",
+        name="pointcloud_crop_box",
+        output="screen",
+        parameters=[crop_box_path],
+    )
+
     return LaunchDescription([
         micro_ros_agent,
         rsp_node,           # Robot Model node synchronized with Mapping
@@ -150,5 +160,6 @@ def generate_launch_description():
         ekf_localization,
         map_server_node,
         nav2_amcl,
-        lifecycle_manager
+        lifecycle_manager,
+        crop_box_pointcloud
     ])
