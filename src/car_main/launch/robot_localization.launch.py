@@ -2,6 +2,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import AnyLaunchDescriptionSource
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, Command, PathJoinSubstitution # Added Command & PathJoinSubstitution
 from launch_ros.actions import Node
@@ -15,6 +16,7 @@ def generate_launch_description():
     view_robot_model_dir = get_package_share_directory('view_robot_model')
     zed_wrapper_dir = get_package_share_directory('zed_wrapper')
     crop_box_dir = get_package_share_directory("pointcloud_crop_box")
+    rosbridge_dir = get_package_share_directory('rosbridge_server')
 
     # Define the URDF file path identical to your Mapping configuration
     xacro_file_path = PathJoinSubstitution([view_robot_model_dir, 'urdf', 'robot_model.urdf.xacro'])
@@ -143,12 +145,21 @@ def generate_launch_description():
                     {"node_names": ['map_server', 'amcl']}]
     )
 
+    # Pointcloud Crop Box
     crop_box_pointcloud = Node(
         package="pointcloud_crop_box",
         executable="pointcloud_crop_box_node",
         name="pointcloud_crop_box",
         output="screen",
         parameters=[crop_box_path],
+    )
+
+    # ROSBRIDGE WEBSOCKET SERVER
+    rosbridge_launch = IncludeLaunchDescription(
+        AnyLaunchDescriptionSource(
+            os.path.join(rosbridge_dir, 'launch', 'rosbridge_websocket_launch.xml')
+        ),
+        # launch_arguments={'port': '9090'}.items() 
     )
 
     return LaunchDescription([
@@ -161,5 +172,6 @@ def generate_launch_description():
         map_server_node,
         nav2_amcl,
         lifecycle_manager,
-        crop_box_pointcloud
+        crop_box_pointcloud,
+        rosbridge_launch
     ])
