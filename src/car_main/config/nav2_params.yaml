@@ -227,7 +227,7 @@ global_costmap:
       stvl_layer:
         plugin: "spatio_temporal_voxel_layer/SpatioTemporalVoxelLayer"
         enabled: true
-        voxel_decay: 1.0            # Đã giảm từ 15.0 xuống 1.5s để cản ma biến mất nhanh, phù hợp cho xe nâng di chuyển
+        voxel_decay: 1.0            
         decay_model: 0
         voxel_size: 0.05
         track_unknown_space: true
@@ -247,18 +247,18 @@ global_costmap:
           marking: true
           clearing: true
           obstacle_range: 3.0       # Khớp với obstacle_max_range cũ của bạn
-          min_obstacle_height: 0.05 # Khuyên dùng để 4cm để lọc nhiễu sần sùi của sàn nhà
+          min_obstacle_height: 0.03 # Khuyên dùng để 4cm để lọc nhiễu sần sùi của sàn nhà
           max_obstacle_height: 0.7  # Khớp với chiều cao trần quét cũ của bạn (70cm)
           expected_update_rate: 0.0
           observation_persistence: 0.0
           inf_is_valid: false
           filter: "voxel"
           voxel_min_points: 0
-          clear_after_reading: true
-          max_z: 3.5                # Giới hạn tầm nhìn xa của camera để khớp với ZED2 (3.5m)
-          min_z: 0.2                # Giới hạn tầm nhìn gần của ZED2 (20cm)
-          vertical_fov_angle: 1.22   # Góc nhìn dọc thực tế của ZED2 (~70 độ đổi sang Radian)
-          horizontal_fov_angle: 1.92 # Góc nhìn ngang thực tế của ZED2 (~110 độ đổi sang Radian)
+          clear_after_reading: false
+          max_z: 3.5               
+          min_z: 0.3      
+          vertical_fov_angle: 0.60          
+          horizontal_fov_angle: 1.76   
           decay_acceleration: 15.0
           model_type: 0
 
@@ -275,7 +275,7 @@ global_costmap:
 local_costmap:
   local_costmap:
     ros__parameters:
-      update_frequency: 5.0
+      update_frequency: 10.0
       publish_frequency: 2.0
       global_frame: odom
       robot_base_frame: base_footprint
@@ -346,7 +346,7 @@ local_costmap:
       stvl_layer:
         plugin: "spatio_temporal_voxel_layer/SpatioTemporalVoxelLayer"
         enabled: true
-        voxel_decay: 0.3            # Đã giảm từ 15.0 xuống 1.5s để cản ma biến mất nhanh, phù hợp cho xe nâng di chuyển
+        voxel_decay: 0.5            
         decay_model: 0
         voxel_size: 0.05
         track_unknown_space: true
@@ -366,18 +366,18 @@ local_costmap:
           marking: true
           clearing: true
           obstacle_range: 3.0       # Khớp với obstacle_max_range cũ của bạn
-          min_obstacle_height: 0.05 # Khuyên dùng để 4cm để lọc nhiễu sần sùi của sàn nhà
+          min_obstacle_height: 0.03 # Khuyên dùng để 4cm để lọc nhiễu sần sùi của sàn nhà
           max_obstacle_height: 0.7  # Khớp với chiều cao trần quét cũ của bạn (70cm)
           expected_update_rate: 0.0
           observation_persistence: 0.0
           inf_is_valid: false
           filter: "voxel"
           voxel_min_points: 0
-          clear_after_reading: true
-          max_z: 3.5                # Giới hạn tầm nhìn xa của camera để khớp với ZED2 (3.5m)
-          min_z: 0.2                # Giới hạn tầm nhìn gần của ZED2 (20cm)
-          vertical_fov_angle: 1.22   # Góc nhìn dọc thực tế của ZED2 (~70 độ đổi sang Radian)
-          horizontal_fov_angle: 1.92 # Góc nhìn ngang thực tế của ZED2 (~110 độ đổi sang Radian)
+          clear_after_reading: false
+          max_z: 3.5                
+          min_z: 0.3              
+          vertical_fov_angle: 0.60          
+          horizontal_fov_angle: 1.76   
           decay_acceleration: 15.0
           model_type: 0
 

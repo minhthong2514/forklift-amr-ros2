@@ -11,3 +11,6 @@
 [submodule "src/pointcloud_crop_box"]
 	path = src/pointcloud_crop_box
 	url = https://github.com/husarion/pointcloud_crop_box.git
+[submodule "src/web_video_server"]
+	path = src/web_video_server
+	url = https://github.com/RobotWebTools/web_video_server.git
