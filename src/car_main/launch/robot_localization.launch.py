@@ -154,6 +154,18 @@ def generate_launch_description():
         parameters=[crop_box_path],
     )
 
+    # Web video server
+    web_video_server_node = Node(
+        package='web_video_server',
+        executable='web_video_server',
+        name='web_video_server',
+        output='screen',
+        # parameters=[{
+        #     'port': 8080,
+        #     'address': '0.0.0.0'
+        # }]
+    )
+
     # ROSBRIDGE WEBSOCKET SERVER
     rosbridge_launch = IncludeLaunchDescription(
         AnyLaunchDescriptionSource(
@@ -161,6 +173,7 @@ def generate_launch_description():
         ),
         # launch_arguments={'port': '9090'}.items() 
     )
+
 
     return LaunchDescription([
         micro_ros_agent,
@@ -173,5 +186,6 @@ def generate_launch_description():
         nav2_amcl,
         lifecycle_manager,
         crop_box_pointcloud,
+        web_video_server_node,
         rosbridge_launch
     ])
