@@ -13,6 +13,14 @@ def generate_launch_description():
         shell=True
     )
 
+    start_watch_css = ExecuteProcess(
+        cmd=['npm', 'run', 'watch-css'], 
+        cwd=web_dir,
+        output='screen',
+        shell=True
+    )
+
     return LaunchDescription([
-        start_web_server
+        start_web_server,
+        start_watch_css
     ])
