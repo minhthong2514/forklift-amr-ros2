@@ -18,14 +18,23 @@ def generate_launch_description():
             os.path.join(pkg_car_main, 'launch', 'robot_navigation.launch.py') 
         )
     )
-    web_server_launch = IncludeLaunchDescription(
+    
+
+    pickdrop_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(pkg_car_main, 'launch', 'robot_web_server.launch.py') 
+            os.path.join(pkg_car_main, 'launch', 'robot_pickdrop.launch.py') 
         )
     )
 
+    web_server_launch = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(pkg_car_main, 'launch', 'robot_web_server.launch.py') 
+            )
+        )
+    
     return LaunchDescription([
         localization_launch,
         navigation_launch,
+        pickdrop_launch,
         web_server_launch
     ])

@@ -5,7 +5,7 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from geometry_msgs.msg import PointStamped, Twist
 from sensor_msgs.msg import Image, CameraInfo
-from std_msgs.msg import Int8, Bool
+from std_msgs.msg import Int8, Bool, String
 from std_srvs.srv import Trigger
 from tf2_ros import TransformException, Buffer, TransformListener
 from cv_bridge import CvBridge
@@ -18,11 +18,17 @@ import tf2_geometry_msgs
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 import csv
+import json
+import gc
+import torch
 
 class DockingServer(Node):
     def __init__(self):
         super().__init__('docking_server')
-        
+
+        self.declare_parameter('enable_csv', False)
+        self.enable_csv = self.get_parameter('enable_csv').get_parameter_value().bool_value
+
         # Cấu hình số lần chạy thực nghiệm để xuất báo cáo
         self.max_test_runs = 5                # Thay đổi số này tùy ý
         
@@ -123,7 +129,8 @@ class DockingServer(Node):
         self.srv_drop = self.create_service(Trigger, 'start_dropoff', self.dropoff_callback, callback_group=self.cb_group_service)
 
         self.get_logger().info("Đang tải model YOLO TensorRT ngầm...")
-        self.model = YOLO(self.YOLO_MODEL_PATH, task="obb")
+        self.model = None
+        self.web_pallet_pub = self.create_publisher(String, '/web/pallet_offset', 10)
 
         # Quản lý Trạng thái tuần tự (State Machine)
         self.state = 'IDLE'
@@ -154,11 +161,27 @@ class DockingServer(Node):
         self.last_cam_log_time = time.time()
         self.get_logger().info("=== DOCKING SERVER SẴN SÀNG CHẠY TỰ ĐỘNG ===")
 
+    def load_yolo_model(self):
+        if self.model is None:
+            self.get_logger().info("--> [GPU] Đang nạp model YOLO vào VRAM...")
+            self.model = YOLO(self.YOLO_MODEL_PATH, task="obb")
+
+    def unload_yolo_model(self):
+        if self.model is not None:
+            self.get_logger().info("--> [GPU] Đã giải phóng model YOLO khỏi VRAM!")
+            del self.model
+            self.model = None
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
     def master_state_callback(self, msg):
-        # Khi nhận được tín hiệu số 1 (Xuất phát đi tới trạm Pickup)
         if msg.data == 1:
             self.nav2_start_time = time.time()
-            self.get_logger().info("--> [ĐỒNG BỘ] Đã nhận tín hiệu xuất phát từ Master Brain. Bắt đầu tính thời gian Nav2!")
+            self.get_logger().info("--> [ĐỒNG BỘ] Bắt đầu tính thời gian Nav2 sang trạm PICKUP!")
+        elif msg.data == 2:
+            self.nav2_start_time = time.time()
+            self.get_logger().info("--> [ĐỒNG BỘ] Bắt đầu tính thời gian Nav2 sang trạm DROPOFF!")
 
     def odom_callback(self, msg):
         self.current_pose = msg.pose.pose.position
@@ -178,6 +201,7 @@ class DockingServer(Node):
 
     def docking_callback(self, request, response):
         self.get_logger().info(">>> DỊCH VỤ: Yêu cầu lấy hàng được kích hoạt.")
+        self.load_yolo_model()
         self.pickup_nav2_duration = time.time() - self.nav2_start_time
         self.docking_init_time = time.time()
 
@@ -283,7 +307,7 @@ class DockingServer(Node):
         if self.state == 'INSERT_X' or self.target_locked:
             return
 
-        if self.state != 'ALIGN_Y' or self.fx is None:
+        if self.state != 'ALIGN_Y' or self.fx is None or self.model is None:
             return
 
         # 1. Kiểm tra khoảng nghỉ 0.5s giữa các bước căn chỉnh cơ khí ban đầu
@@ -410,6 +434,15 @@ class DockingServer(Node):
                 self.last_cam_error_x = error_x
                 self.last_cam_y_move = y_move
                 self.last_cam_theta_move = theta_move
+
+                offset_data = {
+                    "error_x_m": round(float(error_x), 3),
+                    "error_y_m": round(float(y_move), 3),
+                    "error_theta_deg": round(float(theta_move), 2)
+                }
+                msg_web = String()
+                msg_web.data = json.dumps(offset_data)
+                self.web_pallet_pub.publish(msg_web)
 
                 if should_log:
                     self.get_logger().info(f"[CAMERA] Khoảng cách thực tế từ Cam: {best_depth:.3f}m | error_x còn lại: {error_x:.3f}m")
@@ -621,8 +654,8 @@ class DockingServer(Node):
         elif self.state == 'WAIT_PICKUP_RETRACT_STOP':
             self.cmd_pub.publish(Twist()) 
             if time.time() - self.start_action_time >= 3.0: 
-                self.get_logger().info(">>> Đã di chuyển về HOME và nghỉ đủ 3s. QUY TRÌNH LẤY HÀNG VÀ RÚT CƠ CẤU HOÀN TẤT HOÀN TOÀN!")
-                
+                self.get_logger().info(">>> Hoàn tất lùi thoát trạm Pickup! Trả quyền cho Master Brain để Nav2 sang Dropoff...")
+                self.unload_yolo_model()
                 self.pickup_counter += 1
                 
                 # Thay giá trị random bằng thời gian thực thi luồng thực tế chuẩn xác
@@ -635,7 +668,7 @@ class DockingServer(Node):
                     'Ket qua': 'Thanh cong'
                 })
                 
-                if self.pickup_counter >= self.max_test_runs:
+                if self.enable_csv and self.pickup_counter >= self.max_test_runs:
                     self.save_csv_report('report_pickup.csv', self.pickup_data)
 
                 self.nav2_start_time = time.time() 
@@ -740,8 +773,7 @@ class DockingServer(Node):
         elif self.state == 'WAIT_DROP_RETRACT_WAIT':
             self.cmd_pub.publish(Twist()) 
             if time.time() - self.start_action_time >= 3.0: 
-                self.get_logger().info(">>> Đã di chuyển về HOME và nghỉ đủ 3s. QUY TRÌNH THẢ HÀNG (DROPOFF) HOÀN TẤT AN TOÀN TUYỆT ĐỐI!")
-                
+                self.get_logger().info(">>> Hoàn tất lùi thoát trạm Dropoff! Trả quyền cho Master Brain để Nav2 quay về HOME...")
                 self.dropoff_counter += 1
                 
                 actual_dist = getattr(self, 'final_drop_dist', self.fixed_dropoff_distance) 
@@ -760,7 +792,7 @@ class DockingServer(Node):
                     'Ket qua': 'Thanh cong'
                 })
                 
-                if self.dropoff_counter >= self.max_test_runs:
+                if self.enable_csv and self.dropoff_counter >= self.max_test_runs:
                     self.save_csv_report('report_dropoff.csv', self.dropoff_data)
 
                 self.nav2_start_time = time.time() 
@@ -768,6 +800,7 @@ class DockingServer(Node):
                 self.action_done = True
 
     def save_csv_report(self, filename, data):
+        self.enable_csv = self.get_parameter('enable_csv').get_parameter_value().bool_value
         try:
             keys = data[0].keys()
             with open(filename, 'w', newline='', encoding='utf-8') as output_file:
