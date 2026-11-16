@@ -13,9 +13,20 @@ To prevent wheel-slip drift inherent to Mecanum rollers from degrading pose esti
    * **Mapping Mode:** Uses **SLAM Toolbox** (asynchronous online SLAM) to generate the 2D occupancy grid map of the warehouse environment.
    * **Navigation Mode:** Uses **AMCL** (Adaptive Monte Carlo Localization) matching `/scan` laser data against the static map (`map -> odom`).
 
-| SLAM Generated Occupancy Map | Live RViz2 Navigation & 3D Costmap |
-| :---: | :---: |
-| ![2D SLAM Map](images/map.png) | ![RViz2 3D Navigation](images/rviz_navigation.png) |
+<table align="center" width="100%" style="border-collapse: collapse; table-layout: fixed; margin: 20px 0;">
+  <tr>
+    <th align="center" width="50%" style="padding: 12px; font-size: 15px;">SLAM Generated Occupancy Map</th>
+    <th align="center" width="50%" style="padding: 12px; font-size: 15px;">Live RViz2 Navigation</th>
+  </tr>
+  <tr>
+    <td align="center" width="50%" style="padding: 0; vertical-align: middle; background-color: #ffffff;">
+      <img src="images/map.png" alt="SLAM Generated Occupancy Map" style="width: 100%; height: 380px; object-fit: contain; display: block;">
+    </td>
+    <td align="center" width="50%" style="padding: 0; vertical-align: middle; background-color: #1e1e1e;">
+      <img src="images/rviz_navigation.png" alt="Live RViz2 Navigation" style="width: 100%; height: 380px; object-fit: contain; display: block;">
+    </td>
+  </tr>
+</table>
 
 ---
 

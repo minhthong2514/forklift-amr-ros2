@@ -8,9 +8,20 @@ This document details the mechanical design, compute platform, sensor suite, and
 
 The robot is designed as a compact, omnidirectional pallet-handling forklift built on an extruded aluminum chassis with four **Mecanum wheels** and a lead-screw vertical lifting mast.
 
-| CAD 3D Design | Physical Prototype |
-| :---: | :---: |
-| ![CAD 3D Model](images/forklift.png) | ![Physical Forklift AMR](images/forklift_real.png) |
+<table align="center" width="100%" style="border-collapse: collapse; table-layout: fixed;">
+  <tr>
+    <th align="center" width="50%">CAD 3D Design</th>
+    <th align="center" width="50%">Physical Prototype</th>
+  </tr>
+  <tr>
+    <td align="center" width="50%" style="padding: 0; vertical-align: middle;">
+      <img src="images/forklift.png" alt="CAD 3D Model" style="width: 100%; height: 300px; object-fit: contain; background-color: #ffffff; display: block;">
+    </td>
+    <td align="center" width="50%" style="padding: 0; vertical-align: middle;">
+      <img src="images/forklift_real.png" alt="Physical Forklift AMR" style="width: 100%; height: 300px; object-fit: contain; background-color: #ffffff; display: block;">
+    </td>
+  </tr>
+</table>
 
 ### Key Mechanical Specifications
 * **Drive Configuration:** 4-wheel Mecanum omnidirectional drive (enables zero-radius rotation and lateral strafing in narrow warehouse aisles).
@@ -37,7 +48,9 @@ The robot is designed as a compact, omnidirectional pallet-handling forklift bui
 
 The system operates on a **$26.5\text{V}$ DC** main battery bus, isolated and regulated to protect sensitive compute electronics from motor back-EMF and voltage sags.
 
-![Power Distribution Circuit](images/power_circuit_diagram.jpg)
+<p align="center">
+  <img src="images/power_circuit_diagram.jpg" alt="Power Distribution Circuit" width=80%>
+</p>
 
 ### Circuit Design Highlights
 * **Main Isolation & E-Stop:** Power routes through a physical main switch and a Normally-Open / Normally-Closed (`NO`/`NC`) Emergency Stop contactor (`COM`), allowing immediate hardware-level power cut-off.
@@ -58,3 +71,4 @@ sudo nvpmodel -m 0
 # Lock CPU/GPU/EMC clocks to maximum frequency
 sudo jetson_clocks
 ```
+[Next: 02. ESP32 Micro-ROS Firmware >](02_firmware_esp32.md)
