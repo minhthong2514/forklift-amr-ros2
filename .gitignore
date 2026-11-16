@@ -9,6 +9,7 @@ src/ros2/
 src/uros/
 src/eProsima/
 src/view_robot_model/meshes
+src/gazebo_sim/
 
 # Python cache
 __pycache__/
