@@ -1,7 +1,8 @@
 # Forklift AMR — Autonomous Mecanum Forklift Navigation Stack (ROS2 Humble)
 
 [![ROS2](https://img.shields.io/badge/ROS2-Humble-blue?logo=ros)](https://docs.ros.org/en/humble/)
-[![Platform](https://img.shields.io/badge/Hardware-Jetson%20Nano%20%7C%20ESP32-green?logo=nvidia)](https://developer.nvidia.com/embedded/jetson-nano)
+[![Platform](https://img.shields.io/badge/Hardware-Jetson%20Orin%20Nano%20%7C%20ESP32-green?logo=nvidia)](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/nano-super-developer-kit/)
+[![Sensors](https://img.shields.io/badge/Sensors-ZED2%20Stereo%20%7C%20LiDAR%20C1M1%20%7C%20%20IMU%20BNO055-blueviolet)](https://www.stereolabs.com/products/zed-2)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](LICENSE)
 
 An industrial-oriented **Autonomous Mobile Robot (AMR) Forklift** powered by **ROS2 Humble**, **Nav2**, **3D ZED2 Perception**, and **ESP32 Micro-ROS**. Engineered for tight-space warehouse pallet handling using omnidirectional Mecanum kinematics, 3D Spatio-Temporal Voxel obstacle avoidance, and hardware-tuned trajectory smoothing.
